@@ -1,0 +1,145 @@
+/* ==========================================================================
+   FitPantry PRO - Apple Human Interface Design System
+   Aesthetic: Minimalist, Refined, Modern & Sobriety with Blush Rose Accents
+   ========================================================================== */
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+  }
+  input, textarea, select {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+/* Safe areas for iOS Devices (Notch & Dynamic Island) */
+.safe-bottom {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 1.25rem));
+}
+
+.safe-top {
+  padding-top: max(0.85rem, env(safe-area-inset-top, 0.85rem));
+}
+
+/* Apple Horizontal Smooth Scrollbar Hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Apple Liquid / Frosted Glass Materials */
+.glass-panel {
+  background: rgba(22, 19, 27, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.28);
+}
+
+.glass-header {
+  background: rgba(13, 11, 16, 0.88);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.glass-pill {
+  background: rgba(30, 26, 36, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Apple watchOS Inspired Interactive Checkbox */
+.set-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.65rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  background-color: rgba(30, 25, 36, 0.8);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.set-checkbox:checked {
+  background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);
+  border-color: #fb7185;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+  transform: scale(1.05);
+}
+
+.set-checkbox:checked::after {
+  content: "";
+  width: 0.48rem;
+  height: 0.88rem;
+  border: solid #ffffff;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+/* Rose Quartz Timer Glow Effect */
+@keyframes rose-timer-glow {
+  0%, 100% {
+    box-shadow: 0 0 16px rgba(251, 113, 133, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(251, 113, 133, 0.55);
+  }
+}
+
+.timer-active-glow {
+  animation: rose-timer-glow 2.2s infinite ease-in-out;
+}
+
+/* iOS Sheet Slide Up Transitions */
+@keyframes appleSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: appleSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Tactile Soft-Touch Button Feedback */
+.sweat-proof-btn {
+  min-height: 52px;
+  touch-action: manipulation;
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), filter 0.15s ease;
+}
+
+.sweat-proof-btn:active {
+  transform: scale(0.96);
+  filter: brightness(1.1);
+}
+
+/* Pulsing Action Callout in Apple Rose */
+@keyframes pulse-rose {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(251, 113, 133, 0);
+  }
+}
+
+.pulse-action {
+  animation: pulse-rose 2.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
