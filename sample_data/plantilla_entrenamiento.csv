@@ -1,0 +1,55 @@
+Semana,Día / Sesión,Orden,Ejercicio,Series,Reps,RIR,Descanso,Notas/Técnica
+1,Día 1 - Empuje (Push),1,Press de Banca con Barra,4,6-8,2,120s,Retracción escapular y parada de 1s en pecho
+1,Día 1 - Empuje (Push),2,Press Militar con Mancuernas,3,8-10,2,90s,Bancos a 75 grados y rango completo
+1,Día 1 - Empuje (Push),3,Fondos en Paralelas (Dips),3,10-12,1,90s,Inclinación leve de torso para énfasis pectoral
+1,Día 1 - Empuje (Push),4,Elevaciones Laterales en Polea,4,12-15,1,60s,Plano escapular y control excéntrico de 2s
+1,Día 1 - Empuje (Push),5,Extensión de Tríceps en Polea Alta,3,10-12,1,60s,Codos fijos a los costados
+1,Día 2 - Tracción (Pull),1,Dominadas Pronas / Neutras,4,6-8,2,120s,Pecho a la barra y descenso controlado
+1,Día 2 - Tracción (Pull),2,Remo con Barra 45º,3,8-10,2,90s,Traccionar hacia la cadera y apretar dorsal
+1,Día 2 - Tracción (Pull),3,Jalón al Pecho Agarre Neutro,3,10-12,1,90s,Estiramiento máximo en la parte alta
+1,Día 2 - Tracción (Pull),4,Pájaros / Face Pull en Polea,4,15,1,60s,Foco en deltoides posterior y rotadores
+1,Día 2 - Tracción (Pull),5,Curl de Bíceps en Banco Inclinado,3,10-12,1,60s,Estiramiento profundo de la cabeza larga
+1,Día 3 - Pierna (Legs),1,Sentadilla Trasera con Barra,4,6-8,2,150s,Profundidad paralela y torso firme
+1,Día 3 - Pierna (Legs),2,Peso Muerto Rumano con Mancuernas,3,8-10,2,120s,Bisagra de cadera y tensión en isquiotibiales
+1,Día 3 - Pierna (Legs),3,Prensa de Piernas 45º,3,10-12,1,90s,Pies a media plataforma y sin bloquear rodillas
+1,Día 3 - Pierna (Legs),4,Curl Femoral Tumbado,3,12-15,1,60s,Pausa isométrica de 1s en contracción
+1,Día 3 - Pierna (Legs),5,Gemelos en Máquina de Pie,4,12-15,1,60s,2s de estiramiento en la fase baja
+2,Día 1 - Empuje (Push),1,Press de Banca con Barra,4,6-8,1,120s,Incrementar peso +2.5kg si se cumplieron reps
+2,Día 1 - Empuje (Push),2,Press Militar con Mancuernas,3,8-10,1,90s,Mantener tempo 3-0-1-0
+2,Día 1 - Empuje (Push),3,Fondos en Paralelas (Dips),3,10-12,1,90s,Añadir lastre si es posible
+2,Día 1 - Empuje (Push),4,Elevaciones Laterales en Polea,4,12-15,0,60s,Dropset opcional en la última serie
+2,Día 1 - Empuje (Push),5,Extensión de Tríceps en Polea Alta,3,10-12,0,60s,Buscando fallo técnico
+2,Día 2 - Tracción (Pull),1,Dominadas Pronas / Neutras,4,6-8,1,120s,Intentar añadir 1 rep por serie
+2,Día 2 - Tracción (Pull),2,Remo con Barra 45º,3,8-10,1,90s,Ajustar carga conservando técnica limpia
+2,Día 2 - Tracción (Pull),3,Jalón al Pecho Agarre Neutro,3,10-12,1,90s,Control excéntrico estricto
+2,Día 2 - Tracción (Pull),4,Pájaros / Face Pull en Polea,4,15,0,60s,Quema constante
+2,Día 2 - Tracción (Pull),5,Curl de Bíceps en Banco Inclinado,3,10-12,0,60s,Contracción de pico arriba
+2,Día 3 - Pierna (Legs),1,Sentadilla Trasera con Barra,4,6-8,1,150s,Subir 2.5kg manteniendo profundidad
+2,Día 3 - Pierna (Legs),2,Peso Muerto Rumano con Mancuernas,3,8-10,1,120s,Mayor rango de recorrido
+2,Día 3 - Pierna (Legs),3,Prensa de Piernas 45º,3,10-12,1,90s,Empujar con toda la planta del pie
+2,Día 3 - Pierna (Legs),4,Curl Femoral Tumbado,3,12-15,0,60s,Buscar RIR 0 en serie 3
+2,Día 3 - Pierna (Legs),5,Gemelos en Máquina de Pie,4,12-15,0,60s,Fase excéntrica lenta
+3,Día 1 - Empuje (Push),1,Press de Banca con Barra,4,5-7,1,120s,Semana de alta intensidad
+3,Día 1 - Empuje (Push),2,Press Militar con Mancuernas,3,6-8,1,90s,Control de estabilidad escapular
+3,Día 1 - Empuje (Push),3,Fondos en Paralelas (Dips),3,8-10,1,90s,Lastre controlado
+3,Día 1 - Empuje (Push),4,Elevaciones Laterales en Polea,4,12-15,0,60s,Enfoque en bombeo
+3,Día 1 - Empuje (Push),5,Extensión de Tríceps en Polea Alta,3,10-12,0,60s,Máxima congestión
+3,Día 2 - Tracción (Pull),1,Dominadas Pronas / Neutras,4,5-7,1,120s,Progresión de fuerza
+3,Día 2 - Tracción (Pull),2,Remo con Barra 45º,3,6-8,1,90s,Tensión continua
+3,Día 2 - Tracción (Pull),3,Jalón al Pecho Agarre Neutro,3,8-10,1,90s,Bajar barra hasta mentón
+3,Día 2 - Tracción (Pull),4,Pájaros / Face Pull en Polea,4,12-15,0,60s,Retención 1s en contracción
+3,Día 2 - Tracción (Pull),5,Curl de Bíceps en Banco Inclinado,3,8-10,0,60s,Supinación completa
+3,Día 3 - Pierna (Legs),1,Sentadilla Trasera con Barra,4,5-7,1,150s,Carga pesada con spotter o pines
+3,Día 3 - Pierna (Legs),2,Peso Muerto Rumano con Mancuernas,3,6-8,1,120s,Cinturón lumbar opcional
+3,Día 3 - Pierna (Legs),3,Prensa de Piernas 45º,3,8-10,1,90s,Tensión en cuádriceps
+3,Día 3 - Pierna (Legs),4,Curl Femoral Tumbado,3,10-12,0,60s,Agotamiento muscular
+3,Día 3 - Pierna (Legs),5,Gemelos en Máquina de Pie,4,10-12,0,60s,Pausa estricta en estiramiento
+4,Día 1 - Empuje (Push),1,Press de Banca con Barra,3,8-10,3,90s,Semana de descarga activa (Deload)
+4,Día 1 - Empuje (Push),2,Press Militar con Mancuernas,2,10-12,3,90s,Reducción de volumen al 60%
+4,Día 1 - Empuje (Push),3,Elevaciones Laterales en Polea,2,12-15,2,60s,Técnica y recuperación
+4,Día 2 - Tracción (Pull),1,Dominadas Pronas / Neutras,3,8,3,90s,Sin llegar al fallo
+4,Día 2 - Tracción (Pull),2,Remo con Barra 45º,2,10,3,90s,Buenas sensaciones articulares
+4,Día 2 - Tracción (Pull),3,Curl de Bíceps en Banco Inclinado,2,12,2,60s,Recuperación de tendones
+4,Día 3 - Pierna (Legs),1,Sentadilla Trasera con Barra,3,8,3,120s,Velocidad y técnica perfecta
+4,Día 3 - Pierna (Legs),2,Peso Muerto Rumano con Mancuernas,2,10,3,90s,Estiramiento dinámico
+4,Día 3 - Pierna (Legs),3,Curl Femoral Tumbado,2,12,2,60s,Movilidad y descarga
