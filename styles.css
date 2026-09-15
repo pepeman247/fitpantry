@@ -1,6 +1,6 @@
 /* ==========================================================================
    FitPantry PRO - Apple Human Interface Design System
-   Aesthetic: Minimalist, Refined, Modern & Sobriety with Blush Rose Accents
+   Aesthetic: Minimalist, Modern, Sobriety with Apple Fitness Green Accents (#30d158)
    ========================================================================== */
 
 @layer base {
@@ -34,9 +34,9 @@
   scrollbar-width: none;
 }
 
-/* Apple Liquid / Frosted Glass Materials */
+/* Apple Liquid / Frosted Glass Materials with Subtle Obsidian Emerald Tint */
 .glass-panel {
-  background: rgba(22, 19, 27, 0.78);
+  background: rgba(16, 22, 18, 0.78);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -44,20 +44,20 @@
 }
 
 .glass-header {
-  background: rgba(13, 11, 16, 0.88);
+  background: rgba(10, 14, 11, 0.88);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
   border-color: rgba(255, 255, 255, 0.06);
 }
 
 .glass-pill {
-  background: rgba(30, 26, 36, 0.85);
+  background: rgba(20, 28, 23, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Apple watchOS Inspired Interactive Checkbox */
+/* Apple watchOS Inspired Interactive Checkbox (Fitness Activity Green) */
 .set-checkbox {
   appearance: none;
   -webkit-appearance: none;
@@ -65,7 +65,7 @@
   height: 1.85rem;
   border-radius: 0.65rem;
   border: 1.5px solid rgba(255, 255, 255, 0.16);
-  background-color: rgba(30, 25, 36, 0.8);
+  background-color: rgba(20, 28, 23, 0.8);
   display: inline-grid;
   place-content: center;
   cursor: pointer;
@@ -73,9 +73,9 @@
 }
 
 .set-checkbox:checked {
-  background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);
-  border-color: #fb7185;
-  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+  background: linear-gradient(135deg, #30d158 0%, #10b981 100%);
+  border-color: #30d158;
+  box-shadow: 0 4px 14px rgba(48, 209, 88, 0.35);
   transform: scale(1.05);
 }
 
@@ -83,23 +83,23 @@
   content: "";
   width: 0.48rem;
   height: 0.88rem;
-  border: solid #ffffff;
+  border: solid #042f15;
   border-width: 0 2.5px 2.5px 0;
   transform: rotate(45deg) translate(-1px, -1px);
 }
 
-/* Rose Quartz Timer Glow Effect */
-@keyframes rose-timer-glow {
+/* Apple Fitness Green Timer Glow Effect */
+@keyframes apple-timer-glow {
   0%, 100% {
-    box-shadow: 0 0 16px rgba(251, 113, 133, 0.25);
+    box-shadow: 0 0 16px rgba(48, 209, 88, 0.25);
   }
   50% {
-    box-shadow: 0 0 30px rgba(251, 113, 133, 0.55);
+    box-shadow: 0 0 30px rgba(48, 209, 88, 0.55);
   }
 }
 
 .timer-active-glow {
-  animation: rose-timer-glow 2.2s infinite ease-in-out;
+  animation: apple-timer-glow 2.2s infinite ease-in-out;
 }
 
 /* iOS Sheet Slide Up Transitions */
@@ -130,16 +130,16 @@
   filter: brightness(1.1);
 }
 
-/* Pulsing Action Callout in Apple Rose */
-@keyframes pulse-rose {
+/* Pulsing Action Callout in Apple Fitness Green */
+@keyframes pulse-green {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.45);
+    box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.45);
   }
   50% {
-    box-shadow: 0 0 0 12px rgba(251, 113, 133, 0);
+    box-shadow: 0 0 0 12px rgba(48, 209, 88, 0);
   }
 }
 
 .pulse-action {
-  animation: pulse-rose 2.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  animation: pulse-green 2.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }

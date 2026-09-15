@@ -1,15 +1,20 @@
 {
-  "name": "FitPantry PRO - Nutrición & Gimnasio",
-  "short_name": "FitPantry",
+  "name": "FitPantry Él - Nutrición & Gimnasio",
+  "short_name": "FitPantry Él",
   "description": "Gestor inteligente de despensa/compras y registro de entrenamientos en vivo offline para gimnasios",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#09090b",
-  "theme_color": "#09090b",
+  "background_color": "#090d0a",
+  "theme_color": "#090d0a",
   "lang": "es",
-  "categories": ["fitness", "health", "lifestyle", "productivity"],
+  "categories": [
+    "fitness",
+    "health",
+    "lifestyle",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "icons/icon.svg",

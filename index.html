@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>FitPantry PRO - Apple Edition</title>
+  <title>FitPantry (Él) - Nutrición & Entrenamiento</title>
   
   <!-- PWA Meta Tags & Apple Web App -->
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#0d0c10" />
+  <meta name="theme-color" content="#090d0a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="FitPantry" />
+  <meta name="apple-mobile-web-app-title" content="FitPantry Él" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
 
@@ -22,7 +22,7 @@
       theme: {
         extend: {
           colors: {
-            appbg: '#0d0c10',
+            appbg: '#0a0d0b',
             appcard: '#16141a',
             blush: {
               50: '#fdf2f8',
@@ -48,10 +48,10 @@
   <!-- Canvas Confetti for Celebrations -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
-  <!-- Custom Styles (Apple HIG & Blush Rose Materials) -->
+  <!-- Custom Styles (Apple HIG & Apple Fitness Green Materials) -->
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="bg-[#0d0c10] text-zinc-100 min-h-full font-sans antialiased flex flex-col selection:bg-rose-500/30 selection:text-rose-100 pb-28">
+<body class="bg-[#0a0d0b] text-zinc-100 min-h-full font-sans antialiased flex flex-col selection:bg-emerald-500/30 selection:text-emerald-100 pb-28">
 
   <!-- ========================================== -->
   <!-- TOAST CONTAINER (APPLE MINIMALIST CAPSULE) -->
@@ -64,22 +64,22 @@
   <header class="sticky top-0 z-40 glass-header border-b border-white/[0.06] safe-top">
     <div class="max-w-md mx-auto px-4 py-2.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-2xl bg-gradient-to-tr from-rose-400 via-pink-400 to-rose-500 flex items-center justify-center shadow-lg shadow-rose-500/20 text-zinc-950 font-black text-xs">
+        <div class="w-8 h-8 rounded-2xl bg-gradient-to-tr from-emerald-400 via-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-zinc-950 font-black text-xs">
           FP
         </div>
         <div>
           <h1 class="text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5 leading-none">
-            FitPantry <span class="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/25">ROSE</span>
+            FitPantry <span class="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">ÉL</span>
           </h1>
-          <span id="offline-ready-badge" class="inline-flex items-center gap-1 text-[9px] text-rose-400/90 font-medium">
-            <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span> Offline PWA
+          <span id="offline-ready-badge" class="inline-flex items-center gap-1 text-[9px] text-emerald-400/90 font-medium">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Offline PWA
           </span>
         </div>
       </div>
 
       <!-- Apple Segmented Control: 3 Días vs 5 Días -->
       <div class="bg-zinc-900/90 border border-white/[0.08] p-1 rounded-2xl flex items-center shadow-inner">
-        <button data-plan="plan3dias" class="top-plan-pill px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-rose-400 to-pink-500 text-zinc-950 shadow-sm transition-all">
+        <button data-plan="plan3dias" class="top-plan-pill px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-400 to-[#30d158] text-zinc-950 shadow-sm transition-all">
           3 Días
         </button>
         <button data-plan="plan5dias" class="top-plan-pill px-3 py-1 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all">
@@ -91,12 +91,12 @@
     <!-- ========================================== -->
     <!-- FLOATING REST TIMER (APPLE FITNESS STYLE)  -->
     <!-- ========================================== -->
-    <div id="global-rest-timer" class="relative max-w-md mx-auto px-3.5 py-2 bg-[#121015]/90 border-t border-white/[0.05] flex items-center justify-between gap-3 text-xs transition-all overflow-hidden">
-      <!-- Background Progress Fill in Soft Blush Rose -->
-      <div id="timer-progress-fill" class="absolute left-0 top-0 bottom-0 bg-rose-500/15 transition-all duration-300 w-0 pointer-events-none"></div>
+    <div id="global-rest-timer" class="relative max-w-md mx-auto px-3.5 py-2 bg-[#0e1410]/90 border-t border-white/[0.05] flex items-center justify-between gap-3 text-xs transition-all overflow-hidden">
+      <!-- Background Progress Fill in Apple Fitness Green -->
+      <div id="timer-progress-fill" class="absolute left-0 top-0 bottom-0 bg-emerald-500/15 transition-all duration-300 w-0 pointer-events-none"></div>
 
       <div class="flex items-center gap-2.5 z-10 min-w-0">
-        <div class="w-7 h-7 rounded-xl bg-rose-500/15 text-rose-300 flex items-center justify-center shrink-0 border border-rose-500/25">
+        <div class="w-7 h-7 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-500/25">
           <i data-lucide="timer" class="w-4 h-4"></i>
         </div>
         <div class="truncate">
@@ -106,12 +106,12 @@
       </div>
 
       <div class="flex items-center gap-2 z-10">
-        <span id="timer-display" class="font-mono text-base font-black text-rose-300 tracking-wider">1:30</span>
+        <span id="timer-display" class="font-mono text-base font-black text-emerald-300 tracking-wider">1:30</span>
         <div class="flex items-center gap-1">
           <button id="timer-minus-btn" title="-30s" class="p-1 text-zinc-400 hover:text-zinc-100 bg-zinc-900 rounded-lg border border-white/[0.05]">
             <i data-lucide="minus" class="w-3 h-3"></i>
           </button>
-          <button id="timer-play-btn" title="Play/Pausa" class="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-rose-300 rounded-xl border border-white/[0.08] shadow-sm">
+          <button id="timer-play-btn" title="Play/Pausa" class="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-emerald-300 rounded-xl border border-white/[0.08] shadow-sm">
             <i data-lucide="play" class="w-4 h-4"></i>
           </button>
           <button id="timer-plus-btn" title="+30s" class="p-1 text-zinc-400 hover:text-zinc-100 bg-zinc-900 rounded-lg border border-white/[0.05]">
@@ -153,10 +153,10 @@
     <section id="tab-pantry" class="tab-panel hidden space-y-3.5">
       <!-- Subviews Switcher (En Casa vs Por Comprar) -->
       <div class="p-1 bg-zinc-900/90 border border-white/[0.07] rounded-2xl flex items-center gap-1 shadow-inner">
-        <button id="btn-subview-athome" onclick="setPantryView('athome')" class="flex-1 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-rose-400/20 to-pink-500/20 text-rose-300 border border-rose-500/30 flex items-center justify-center gap-1.5 transition-all shadow-sm">
+        <button id="btn-subview-athome" onclick="setPantryView('athome')" class="flex-1 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-emerald-400/20 to-[#30d158]/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all shadow-sm">
           <i data-lucide="home" class="w-3.5 h-3.5"></i>
           <span>En Casa</span>
-          <span id="count-athome" class="px-2 py-0.2 rounded-full text-[10px] bg-rose-950/60 text-rose-300 font-bold ml-1">0</span>
+          <span id="count-athome" class="px-2 py-0.2 rounded-full text-[10px] bg-emerald-950/60 text-emerald-300 font-bold ml-1">0</span>
         </button>
         <button id="btn-subview-tobuy" onclick="setPantryView('tobuy')" class="flex-1 py-2 text-xs font-semibold rounded-xl text-zinc-400 hover:text-zinc-200 flex items-center justify-center gap-1.5 transition-all">
           <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
@@ -169,9 +169,9 @@
       <div class="flex items-center gap-2">
         <div class="relative flex-1">
           <i data-lucide="search" class="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-          <input id="pantry-search-input" type="text" placeholder="Buscar alimento, marca, notas..." class="w-full pl-9 pr-3.5 py-2.5 bg-zinc-900/80 border border-white/[0.07] rounded-2xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/30 transition-all" />
+          <input id="pantry-search-input" type="text" placeholder="Buscar alimento, marca, notas..." class="w-full pl-9 pr-3.5 py-2.5 bg-zinc-900/80 border border-white/[0.07] rounded-2xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 transition-all" />
         </div>
-        <button onclick="markAllAsBought()" class="px-3 py-2.5 bg-zinc-900/90 hover:bg-rose-500/20 border border-white/[0.08] text-rose-300 font-bold rounded-2xl text-xs flex items-center gap-1 shrink-0 transition-all shadow-sm">
+        <button onclick="markAllAsBought()" class="px-3 py-2.5 bg-zinc-900/90 hover:bg-emerald-500/20 border border-white/[0.08] text-emerald-300 font-bold rounded-2xl text-xs flex items-center gap-1 shrink-0 transition-all shadow-sm">
           <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
           <span>Comprar Todo</span>
         </button>
@@ -194,7 +194,7 @@
       <!-- Week Selector -->
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Mesociclo</span>
-        <button onclick="resetDayWorkoutPrompt()" class="text-xs text-zinc-400 hover:text-rose-400 flex items-center gap-1 transition-colors">
+        <button onclick="resetDayWorkoutPrompt()" class="text-xs text-zinc-400 hover:text-emerald-400 flex items-center gap-1 transition-colors">
           <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
           <span>Reiniciar día</span>
         </button>
@@ -206,13 +206,13 @@
       <div class="glass-panel p-3.5 rounded-3xl border border-white/[0.07] shadow-md">
         <div class="flex items-center justify-between mb-2">
           <div>
-            <span class="text-[10px] uppercase font-bold text-rose-300/80 tracking-wider">Progreso de la sesión</span>
+            <span class="text-[10px] uppercase font-bold text-emerald-300/80 tracking-wider">Progreso de la sesión</span>
             <p id="workout-progress-summary" class="text-xs font-semibold text-zinc-200">0 de 0 series completadas</p>
           </div>
-          <span id="workout-progress-pct" class="text-xs font-black font-mono text-rose-300 bg-rose-500/15 px-2.5 py-0.5 rounded-full border border-rose-500/25">0%</span>
+          <span id="workout-progress-pct" class="text-xs font-black font-mono text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/25">0%</span>
         </div>
         <div class="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
-          <div id="workout-progress-bar" class="h-full bg-gradient-to-r from-rose-400 via-pink-400 to-rose-500 transition-all duration-300 w-0"></div>
+          <div id="workout-progress-bar" class="h-full bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500 transition-all duration-300 w-0"></div>
         </div>
       </div>
 
@@ -227,11 +227,11 @@
       
       <!-- Plan Selector Box -->
       <div class="glass-panel p-5 rounded-3xl border border-white/[0.07] space-y-3">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
-          <i data-lucide="layers" class="w-4 h-4 text-rose-400"></i>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+          <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
           <span>Programa Activo</span>
         </h3>
-        <select id="settings-plan-selector" onchange="onPlanChangedInSettings(this.value)" class="w-full bg-zinc-900 border border-white/[0.08] rounded-2xl p-3 text-xs text-zinc-100 font-bold focus:outline-none focus:border-rose-400">
+        <select id="settings-plan-selector" onchange="onPlanChangedInSettings(this.value)" class="w-full bg-zinc-900 border border-white/[0.08] rounded-2xl p-3 text-xs text-zinc-100 font-bold focus:outline-none focus:border-emerald-400">
           <option value="plan3dias">Plan 3 Días (Full Body + Nutrición + Aldi)</option>
           <option value="plan5dias">Plan 5 Días (Torso / Pierna + Nutrición + Aldi)</option>
         </select>
@@ -243,11 +243,11 @@
       <!-- Custom CSV Upload Drag & Drop -->
       <div class="glass-panel p-5 rounded-3xl border border-white/[0.07] space-y-3">
         <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-          <i data-lucide="upload" class="w-4 h-4 text-rose-400"></i>
+          <i data-lucide="upload" class="w-4 h-4 text-emerald-400"></i>
           <span>Importar Archivo CSV Personalizado</span>
         </h3>
-        <div id="csv-drop-zone" class="border-2 border-dashed border-white/[0.1] hover:border-rose-400/80 bg-zinc-900/60 p-5 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2">
-          <i data-lucide="file-up" class="w-6 h-6 text-rose-400"></i>
+        <div id="csv-drop-zone" class="border-2 border-dashed border-white/[0.1] hover:border-emerald-400/80 bg-zinc-900/60 p-5 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2">
+          <i data-lucide="file-up" class="w-6 h-6 text-emerald-400"></i>
           <p class="text-xs font-semibold text-zinc-200">Toca para seleccionar o arrastra un archivo .csv</p>
           <p class="text-[10px] text-zinc-500">Auto-detecta si es Rutina, Nutrición o Despensa</p>
           <input type="file" id="csv-file-input" accept=".csv,text/csv" class="hidden" />
@@ -257,7 +257,7 @@
       <!-- Preferences -->
       <div class="glass-panel p-5 rounded-3xl border border-white/[0.07] space-y-3">
         <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-          <i data-lucide="sliders" class="w-3.5 h-3.5 text-rose-400"></i>
+          <i data-lucide="sliders" class="w-3.5 h-3.5 text-emerald-400"></i>
           <span>Preferencias del Temporizador</span>
         </h3>
 
@@ -267,7 +267,7 @@
               <span class="font-semibold text-zinc-200 block">Auto-inicio de descanso</span>
               <span class="text-[11px] text-zinc-400">Inicia el reloj automáticamente al marcar una serie</span>
             </div>
-            <input type="checkbox" id="setting-auto-timer" class="rounded-lg text-rose-500 h-4 w-4 bg-zinc-800 border-zinc-700" />
+            <input type="checkbox" id="setting-auto-timer" class="rounded-lg text-emerald-500 h-4 w-4 bg-zinc-800 border-zinc-700" />
           </label>
 
           <label class="flex items-center justify-between py-1 cursor-pointer border-t border-white/[0.05] pt-3">
@@ -275,7 +275,7 @@
               <span class="font-semibold text-zinc-200 block">Feedback Sonoro (Web Audio)</span>
               <span class="text-[11px] text-zinc-400">Emite acordes armónicos y campanadas 100% offline</span>
             </div>
-            <input type="checkbox" id="setting-sound" class="rounded-lg text-rose-500 h-4 w-4 bg-zinc-800 border-zinc-700" />
+            <input type="checkbox" id="setting-sound" class="rounded-lg text-emerald-500 h-4 w-4 bg-zinc-800 border-zinc-700" />
           </label>
 
           <label class="flex items-center justify-between py-1 cursor-pointer border-t border-white/[0.05] pt-3">
@@ -283,7 +283,7 @@
               <span class="font-semibold text-zinc-200 block">Vibración háptica</span>
               <span class="text-[11px] text-zinc-400">Vibra el móvil al finalizar el descanso</span>
             </div>
-            <input type="checkbox" id="setting-vibrate" class="rounded-lg text-rose-500 h-4 w-4 bg-zinc-800 border-zinc-700" />
+            <input type="checkbox" id="setting-vibrate" class="rounded-lg text-emerald-500 h-4 w-4 bg-zinc-800 border-zinc-700" />
           </label>
         </div>
       </div>
@@ -291,16 +291,16 @@
       <!-- Backup & Restore -->
       <div class="glass-panel p-5 rounded-3xl border border-white/[0.07] space-y-3">
         <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-          <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-rose-400"></i>
+          <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-emerald-400"></i>
           <span>Copia de Seguridad</span>
         </h3>
         <div class="flex flex-col gap-2 pt-1">
           <button onclick="exportFullBackup()" class="w-full py-2.5 px-3 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] rounded-2xl text-xs font-semibold text-zinc-200 flex items-center justify-center gap-2 shadow-sm">
-            <i data-lucide="download" class="w-4 h-4 text-rose-400"></i>
+            <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
             <span>Exportar Copia de Seguridad (.json)</span>
           </button>
           <label class="w-full py-2.5 px-3 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] rounded-2xl text-xs font-semibold text-zinc-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm">
-            <i data-lucide="upload" class="w-4 h-4 text-pink-400"></i>
+            <i data-lucide="upload" class="w-4 h-4 text-green-400"></i>
             <span>Restaurar Copia</span>
             <input type="file" accept=".json" onchange="importFullBackup(this)" class="hidden" />
           </label>
@@ -308,9 +308,9 @@
       </div>
 
       <!-- Reset Data -->
-      <div class="p-4 rounded-3xl border border-rose-900/30 bg-rose-950/20 space-y-2">
-        <h4 class="text-xs font-bold text-rose-300">Restablecer datos</h4>
-        <button onclick="resetAllData()" class="py-2 px-3.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-2xl text-xs font-semibold flex items-center gap-1.5">
+      <div class="p-4 rounded-3xl border border-emerald-900/30 bg-emerald-950/20 space-y-2">
+        <h4 class="text-xs font-bold text-emerald-300">Restablecer datos</h4>
+        <button onclick="resetAllData()" class="py-2 px-3.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-2xl text-xs font-semibold flex items-center gap-1.5">
           <i data-lucide="trash" class="w-3.5 h-3.5"></i>
           <span>Restablecer datos locales</span>
         </button>
@@ -328,7 +328,7 @@
   <nav class="fixed bottom-0 left-0 right-0 z-40 glass-header border-t border-white/[0.06] safe-bottom">
     <div class="max-w-md mx-auto grid grid-cols-4 h-16">
       
-      <button data-tab="nutrition" class="nav-tab-btn flex flex-col items-center justify-center text-rose-400 transition-colors">
+      <button data-tab="nutrition" class="nav-tab-btn flex flex-col items-center justify-center text-emerald-400 transition-colors">
         <i data-lucide="utensils" class="w-5 h-5 nav-icon stroke-[2.2px] mb-1"></i>
         <span class="nav-label text-[10px] font-bold tracking-tight">Nutrición</span>
       </button>
