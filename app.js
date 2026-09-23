@@ -151,6 +151,7 @@ function initApp() {
   // Attach event handlers
   setupUIEvents();
   registerPWA();
+  initCloudSyncListeners();
 
   // Initial render
   renderApp();
@@ -595,6 +596,19 @@ window.setNutritionDay = function (encodedDay) {
 window.toggleMealEaten = function (mealId) {
   state.nutritionLogs[mealId] = !state.nutritionLogs[mealId];
   saveStateToStorage();
+
+  if (window.SyncService) {
+    const m = state.nutritionData.find(item => item.id === mealId);
+    window.SyncService.syncNutritionMeal({
+      mealId: mealId,
+      comidaTipo: m ? m.comida : 'Comida',
+      platoNombre: m ? m.plato : '',
+      completed: state.nutritionLogs[mealId],
+      sinGluten: true,
+      notas: ''
+    });
+  }
+
   renderNutrition();
   if (state.nutritionLogs[mealId]) {
     playTone(660, 0.1);
@@ -762,6 +776,11 @@ window.togglePantryItemStatus = function (id) {
   if (!item) return;
   item.status = item.status === 'athome' ? 'tobuy' : 'athome';
   saveStateToStorage();
+
+  if (window.SyncService) {
+    window.SyncService.syncPantryItem(item);
+  }
+
   renderPantry();
 };
 
@@ -937,7 +956,7 @@ function renderWorkout() {
     let setsTableHtml = '';
     for (let s = 1; s <= ex.series; s++) {
       const key = `${ex.id}_s${s}`;
-      const log = state.workoutLogs[key] || { weight: '', reps: '', rir: '', completed: false };
+      const log = state.workoutLogs[key] || { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
 
       setsTableHtml += `
         <tr class="border-b border-white/[0.05] hover:bg-white/[0.02]">
@@ -956,6 +975,11 @@ function renderWorkout() {
             <input type="text" placeholder="${ex.rir}" value="${log.rir !== undefined ? log.rir : ''}"
               onchange="saveWorkoutSetField('${ex.id}', ${s}, 'rir', this.value)"
               class="w-12 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-2 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+          </td>
+          <td class="py-2.5 px-1 text-center">
+            <button type="button" onclick="toggleWorkoutSetPain('${ex.id}', ${s})" class="px-2 py-1 rounded-xl text-xs transition-all ${log.molestia_dolor ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold shadow-sm' : 'text-zinc-600 hover:text-zinc-400 border border-transparent'}" title="${log.molestia_dolor ? 'Molestia registrada en serie' : 'Reportar molestia articular/lumbar'}">
+              ⚠️
+            </button>
           </td>
           <td class="py-2.5 px-2 text-center">
             <input type="checkbox" ${log.completed ? 'checked' : ''}
@@ -1030,6 +1054,7 @@ function renderWorkout() {
                 <th class="py-1 px-1 text-center w-20">Kg</th>
                 <th class="py-1 px-1 text-center w-16">Reps</th>
                 <th class="py-1 px-1 text-center w-14">RIR</th>
+                <th class="py-1 px-1 text-center w-10" title="Dolor / Molestia">Alerta</th>
                 <th class="py-1 px-2 text-center w-12">Hecho</th>
               </tr>
             </thead>
@@ -1068,9 +1093,29 @@ window.setTrainingLocation = function (loc) {
 
 window.saveWorkoutSetField = function (exId, setIndex, field, value) {
   const key = `${exId}_s${setIndex}`;
-  if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false };
+  if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
   state.workoutLogs[key][field] = value;
   saveStateToStorage();
+
+  // Sincronización transparente con Supabase / IndexedDB
+  if (window.SyncService) {
+    const ex = state.workoutData.find(e => e.id === exId);
+    window.SyncService.syncWorkoutSet({
+      semana: state.selectedWeek,
+      dia: state.selectedWorkoutDay,
+      ejercicioId: exId,
+      ejercicioNombre: ex ? (ex.varianteGym || ex.patron) : exId,
+      setIndex: setIndex,
+      weight: state.workoutLogs[key].weight,
+      reps: state.workoutLogs[key].reps,
+      rir: state.workoutLogs[key].rir,
+      tempo_cumplido: state.workoutLogs[key].tempo_cumplido,
+      molestia_dolor: state.workoutLogs[key].molestia_dolor,
+      notas: state.workoutLogs[key].notas,
+      completed: state.workoutLogs[key].completed,
+      clientLogKey: key
+    });
+  }
 
   const exercises = state.workoutData.filter(e => e.semana === state.selectedWeek && e.dia === state.selectedWorkoutDay);
   let totalSets = 0;
@@ -1090,11 +1135,61 @@ window.saveWorkoutSetField = function (exId, setIndex, field, value) {
   if (sum) sum.textContent = `${completedSets} de ${totalSets} series completadas`;
 };
 
+window.toggleWorkoutSetPain = function (exId, setIndex) {
+  const key = `${exId}_s${setIndex}`;
+  if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
+  state.workoutLogs[key].molestia_dolor = !state.workoutLogs[key].molestia_dolor;
+  saveStateToStorage();
+
+  if (window.SyncService) {
+    const ex = state.workoutData.find(e => e.id === exId);
+    window.SyncService.syncWorkoutSet({
+      semana: state.selectedWeek,
+      dia: state.selectedWorkoutDay,
+      ejercicioId: exId,
+      ejercicioNombre: ex ? (ex.varianteGym || ex.patron) : exId,
+      setIndex: setIndex,
+      weight: state.workoutLogs[key].weight,
+      reps: state.workoutLogs[key].reps,
+      rir: state.workoutLogs[key].rir,
+      tempo_cumplido: state.workoutLogs[key].tempo_cumplido,
+      molestia_dolor: state.workoutLogs[key].molestia_dolor,
+      notas: state.workoutLogs[key].notas,
+      completed: state.workoutLogs[key].completed,
+      clientLogKey: key
+    });
+  }
+
+  if (state.workoutLogs[key].molestia_dolor) {
+    showToast('⚠️ Molestia registrada en serie. Cuida la alineación raquídea.', 'info');
+  }
+  renderWorkout();
+};
+
 window.toggleWorkoutSetDone = function (exId, setIndex, isDone, restSeconds, encodedName) {
   const key = `${exId}_s${setIndex}`;
-  if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false };
+  if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
   state.workoutLogs[key].completed = isDone;
   saveStateToStorage();
+
+  if (window.SyncService) {
+    const ex = state.workoutData.find(e => e.id === exId);
+    window.SyncService.syncWorkoutSet({
+      semana: state.selectedWeek,
+      dia: state.selectedWorkoutDay,
+      ejercicioId: exId,
+      ejercicioNombre: ex ? (ex.varianteGym || ex.patron) : exId,
+      setIndex: setIndex,
+      weight: state.workoutLogs[key].weight,
+      reps: state.workoutLogs[key].reps,
+      rir: state.workoutLogs[key].rir,
+      tempo_cumplido: state.workoutLogs[key].tempo_cumplido,
+      molestia_dolor: state.workoutLogs[key].molestia_dolor,
+      notas: state.workoutLogs[key].notas,
+      completed: isDone,
+      clientLogKey: key
+    });
+  }
 
   const name = decodeURIComponent(encodedName);
 
@@ -1312,6 +1407,17 @@ function renderFocusModeModal() {
         </div>
       </div>
 
+      <!-- Pain / Discomfort Indicator in Focus Mode -->
+      <div class="flex items-center justify-between p-3 rounded-2xl border ${log.molestia_dolor ? 'bg-amber-950/30 border-amber-500/40 text-amber-300' : 'bg-zinc-900/60 border-white/[0.05] text-zinc-400'}">
+        <div class="flex items-center gap-2">
+          <span class="text-base">${log.molestia_dolor ? '⚠️' : '🛡️'}</span>
+          <span class="text-xs font-semibold">${log.molestia_dolor ? 'Molestia lumbo-articular reportada' : 'Sin molestias articulares'}</span>
+        </div>
+        <button type="button" onclick="toggleFocusSetPain()" class="px-3 py-1 rounded-xl text-xs font-bold border transition-all ${log.molestia_dolor ? 'bg-amber-500/25 border-amber-500/40 text-amber-200' : 'bg-zinc-800 border-white/[0.08] text-zinc-300 hover:text-white'}">
+          ${log.molestia_dolor ? 'Quitar Alerta' : 'Reportar Molestia'}
+        </button>
+      </div>
+
       <!-- HUGE COMPLETION BUTTON IN APPLE APPLE FITNESS GREEN -->
       <div class="pt-2 flex flex-col gap-2.5">
         <button onclick="completeFocusSetAction()" class="sweat-proof-btn pulse-action w-full py-4 px-6 bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500 hover:opacity-95 text-zinc-950 font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-emerald-500/30 flex items-center justify-center gap-3">
@@ -1336,6 +1442,16 @@ function renderFocusModeModal() {
 
   if (window.lucide) lucide.createIcons();
 }
+
+window.toggleFocusSetPain = function () {
+  const ex = state.focus.exercise;
+  const s = state.focus.setIndex;
+  const key = `${ex.id}_s${s}`;
+  if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: 50, reps: 8, rir: '2', completed: false, molestia_dolor: false };
+  state.workoutLogs[key].molestia_dolor = !state.workoutLogs[key].molestia_dolor;
+  saveStateToStorage();
+  renderFocusModeModal();
+};
 
 window.setFocusSetIndex = function (idx) {
   state.focus.setIndex = idx;
@@ -1387,9 +1503,39 @@ window.completeFocusSetAction = function () {
   const w = log.weight !== '' && !isNaN(log.weight) ? log.weight : 50;
   const r = log.reps !== '' && !isNaN(log.reps) ? log.reps : 8;
   const rir = log.rir !== '' ? log.rir : ex.rir;
+  const molestia = !!log.molestia_dolor;
+  const tempo = log.tempo_cumplido !== undefined ? !!log.tempo_cumplido : true;
+  const notas = log.notas || '';
 
-  state.workoutLogs[key] = { weight: w, reps: r, rir: rir, completed: true };
+  state.workoutLogs[key] = {
+    weight: w,
+    reps: r,
+    rir: rir,
+    completed: true,
+    molestia_dolor: molestia,
+    tempo_cumplido: tempo,
+    notas: notas
+  };
   saveStateToStorage();
+
+  if (window.SyncService) {
+    const exName = state.trainingLocation === 'gym' ? (ex.varianteGym || ex.patron) : (ex.varianteCasa || ex.patron);
+    window.SyncService.syncWorkoutSet({
+      semana: state.selectedWeek,
+      dia: state.selectedWorkoutDay,
+      ejercicioId: ex.id,
+      ejercicioNombre: exName,
+      setIndex: s,
+      weight: w,
+      reps: r,
+      rir: rir,
+      tempo_cumplido: tempo,
+      molestia_dolor: molestia,
+      notas: notas,
+      completed: true,
+      clientLogKey: key
+    });
+  }
 
   playTone(700, 0.15);
   if ('vibrate' in navigator && state.settings.vibrate) {
@@ -1681,6 +1827,310 @@ function registerPWA() {
         })
         .catch(err => console.warn('SW registration warning:', err));
     });
+  }
+}
+
+// ============================================================================
+// 10. SUPABASE CLOUD AUTH & OFFLINE SYNC CONTROLLER
+// ============================================================================
+
+let currentAuthMode = 'login'; // 'login' | 'register'
+
+window.openAuthModal = function (mode = 'login') {
+  window.setAuthMode(mode);
+  const modal = document.getElementById('modal-auth');
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.closeAuthModal = function () {
+  const modal = document.getElementById('modal-auth');
+  if (modal) modal.classList.add('hidden');
+};
+
+window.setAuthMode = function (mode) {
+  currentAuthMode = mode;
+  const tabLogin = document.getElementById('auth-tab-login');
+  const tabRegister = document.getElementById('auth-tab-register');
+  const nameGroup = document.getElementById('auth-name-group');
+  const submitLabel = document.getElementById('auth-submit-label');
+  const alertBox = document.getElementById('auth-alert-box');
+
+  if (alertBox) alertBox.classList.add('hidden');
+
+  if (mode === 'login') {
+    tabLogin?.classList.add('bg-gradient-to-r', 'from-emerald-400', 'to-[#30d158]', 'text-zinc-950');
+    tabLogin?.classList.remove('text-zinc-400');
+    tabRegister?.classList.remove('bg-gradient-to-r', 'from-emerald-400', 'to-[#30d158]', 'text-zinc-950');
+    tabRegister?.classList.add('text-zinc-400');
+    nameGroup?.classList.add('hidden');
+    if (submitLabel) submitLabel.textContent = 'Entrar a FitPantry';
+  } else {
+    tabRegister?.classList.add('bg-gradient-to-r', 'from-emerald-400', 'to-[#30d158]', 'text-zinc-950');
+    tabRegister?.classList.remove('text-zinc-400');
+    tabLogin?.classList.remove('bg-gradient-to-r', 'from-emerald-400', 'to-[#30d158]', 'text-zinc-950');
+    tabLogin?.classList.add('text-zinc-400');
+    nameGroup?.classList.remove('hidden');
+    if (submitLabel) submitLabel.textContent = 'Crear Cuenta y Conectar';
+  }
+};
+
+window.handleAuthSubmit = async function (e) {
+  e.preventDefault();
+  const alertBox = document.getElementById('auth-alert-box');
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const email = (document.getElementById('auth-email-input')?.value || '').trim();
+  const password = document.getElementById('auth-password-input')?.value || '';
+  const name = (document.getElementById('auth-name-input')?.value || '').trim();
+
+  if (!email || !password) return;
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-60');
+  }
+
+  try {
+    if (currentAuthMode === 'login') {
+      await window.FirebaseAuth.signIn(email, password);
+      showToast('Sesión iniciada con éxito en Firebase', 'success');
+      window.closeAuthModal();
+      await window.SyncService.pullFromCloud(state);
+      saveStateToStorage();
+      renderApp();
+    } else {
+      await window.FirebaseAuth.signUp(email, password, name);
+      showToast('¡Cuenta creada correctamente en Firebase!', 'success');
+      window.closeAuthModal();
+      await window.SyncService.pullFromCloud(state);
+      saveStateToStorage();
+      renderApp();
+    }
+  } catch (err) {
+    console.error('Error de autenticación:', err);
+    if (alertBox) {
+      alertBox.className = 'p-3 rounded-2xl text-xs font-medium border bg-rose-950/40 border-rose-500/40 text-rose-300';
+      alertBox.textContent = err.message || 'Error al autenticar. Revisa tus credenciales.';
+      alertBox.classList.remove('hidden');
+    }
+    showToast(err.message || 'Error en autenticación', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-60');
+    }
+  }
+};
+
+window.continueAsGuest = function () {
+  sessionStorage.setItem('fitpantry_guest_dismissed', 'true');
+  window.closeAuthModal();
+  showToast('Continuando en Modo Local (Offline)', 'info');
+};
+
+window.logoutUser = async function () {
+  if (confirm('¿Cerrar sesión en FitPantry Cloud (Firebase)? Los datos locales se conservarán.')) {
+    sessionStorage.removeItem('fitpantry_guest_dismissed');
+    await window.FirebaseAuth.signOut();
+    showToast('Sesión cerrada correctamente');
+    updateAuthUI(null);
+    window.openAuthModal('login');
+  }
+};
+
+window.saveFirebaseSettingsFromUI = function () {
+  const apiKey = (document.getElementById('firebase-input-apikey')?.value || '').trim();
+  const authDomain = (document.getElementById('firebase-input-authdomain')?.value || '').trim();
+  const projectId = (document.getElementById('firebase-input-projectid')?.value || '').trim();
+  const appId = (document.getElementById('firebase-input-appid')?.value || '').trim();
+
+  if (!apiKey || !projectId) {
+    showToast('Por favor introduce al menos la API Key y el Project ID de Firebase', 'error');
+    return;
+  }
+
+  const ok = window.FirebaseAuth.saveFirebaseConfig({
+    apiKey,
+    authDomain,
+    projectId,
+    appId
+  });
+
+  if (ok) {
+    showToast('Credenciales de Firebase guardadas en el dispositivo', 'success');
+    window.SyncService.drainQueue();
+  } else {
+    showToast('Error al guardar credenciales', 'error');
+  }
+};
+
+window.promptPasteFirebaseConfig = function () {
+  const raw = prompt('Pega el objeto de configuración copiado de Firebase Console (const firebaseConfig = { ... }):');
+  if (!raw) return;
+
+  try {
+    // Extraer valores mediante expresiones regulares o JSON
+    const apiKeyMatch = raw.match(/apiKey["']?\s*:\s*["']([^"']+)["']/);
+    const authDomainMatch = raw.match(/authDomain["']?\s*:\s*["']([^"']+)["']/);
+    const projectIdMatch = raw.match(/projectId["']?\s*:\s*["']([^"']+)["']/);
+    const appIdMatch = raw.match(/appId["']?\s*:\s*["']([^"']+)["']/);
+
+    const config = {
+      apiKey: apiKeyMatch ? apiKeyMatch[1] : '',
+      authDomain: authDomainMatch ? authDomainMatch[1] : '',
+      projectId: projectIdMatch ? projectIdMatch[1] : '',
+      appId: appIdMatch ? appIdMatch[1] : ''
+    };
+
+    if (config.apiKey) document.getElementById('firebase-input-apikey').value = config.apiKey;
+    if (config.authDomain) document.getElementById('firebase-input-authdomain').value = config.authDomain;
+    if (config.projectId) document.getElementById('firebase-input-projectid').value = config.projectId;
+    if (config.appId) document.getElementById('firebase-input-appid').value = config.appId;
+
+    if (config.apiKey && config.projectId) {
+      window.saveFirebaseSettingsFromUI();
+    } else {
+      showToast('Campos rellenados. Revisa y pulsa "Guardar Conexión"', 'info');
+    }
+  } catch (e) {
+    showToast('No se pudo analizar el texto introducido', 'error');
+  }
+};
+
+window.triggerManualSync = async function () {
+  const dot = document.getElementById('sync-status-dot');
+  if (dot) dot.className = 'w-2 h-2 rounded-full bg-blue-400 animate-ping';
+  showToast('Iniciando sincronización Cloud (Firestore)...', 'info');
+
+  await window.SyncService.drainQueue();
+  if (window.FirebaseAuth && window.FirebaseAuth.isConfigured()) {
+    await window.SyncService.pullFromCloud(state);
+    saveStateToStorage();
+    renderApp();
+  }
+  showToast('Sincronización finalizada', 'success');
+};
+
+function updateAuthUI(user) {
+  const userEmail = document.getElementById('settings-user-email');
+  const userRole = document.getElementById('settings-user-role');
+  const actionBtn = document.getElementById('settings-auth-action-btn');
+
+  if (user) {
+    if (userEmail) userEmail.textContent = user.displayName || user.email || 'Usuario Conectado';
+    if (userRole) userRole.textContent = `Perfil: Hombre • ID: ${(user.uid || '').substring(0, 8)}...`;
+    if (actionBtn) {
+      actionBtn.textContent = 'Cerrar Sesión';
+      actionBtn.className = 'shrink-0 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold transition-all';
+      actionBtn.onclick = window.logoutUser;
+    }
+  } else {
+    if (userEmail) userEmail.textContent = 'Modo Local (Invitado)';
+    if (userRole) userRole.textContent = 'Sin cuenta vinculada';
+    if (actionBtn) {
+      actionBtn.textContent = 'Conectar';
+      actionBtn.className = 'shrink-0 px-3 py-1.5 bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 text-zinc-950 rounded-xl text-xs font-black transition-all';
+      actionBtn.onclick = () => window.openAuthModal('login');
+    }
+  }
+}
+
+function updateSyncUIStatus(status) {
+  const dot = document.getElementById('sync-status-dot');
+  const text = document.getElementById('sync-status-text');
+  const cloudBadge = document.getElementById('cloud-badge-status');
+  const queueCount = document.getElementById('settings-queue-count');
+
+  if (queueCount) {
+    queueCount.textContent = status.pendingCount > 0
+      ? `${status.pendingCount} cambio(s) pendiente(s) de sincronizar`
+      : 'Todos los datos al día con Firestore';
+  }
+
+  if (status.state === 'unconfigured') {
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-zinc-500';
+    if (text) text.textContent = 'Local';
+    if (cloudBadge) {
+      cloudBadge.textContent = 'Firebase no configurado';
+      cloudBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-white/[0.08]';
+    }
+  } else if (status.state === 'guest') {
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+    if (text) text.textContent = 'Invitado';
+    if (cloudBadge) {
+      cloudBadge.textContent = 'Modo Local (Sin Login)';
+      cloudBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30';
+    }
+  } else if (status.state === 'syncing') {
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-blue-400 animate-ping';
+    if (text) text.textContent = 'Sincronizando...';
+    if (cloudBadge) {
+      cloudBadge.textContent = 'Sincronizando con Firestore...';
+      cloudBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30';
+    }
+  } else if (status.state === 'pending' || status.state === 'pending_offline') {
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-yellow-400 animate-pulse';
+    if (text) text.textContent = `${status.pendingCount} pend.`;
+    if (cloudBadge) {
+      cloudBadge.textContent = `${status.pendingCount} cambios en cola (Offline)`;
+      cloudBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/30';
+    }
+  } else {
+    // Synced
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+    if (text) text.textContent = 'Nube OK';
+    if (cloudBadge) {
+      cloudBadge.textContent = 'Firestore Sincronizado';
+      cloudBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25';
+    }
+  }
+}
+
+function initCloudSyncListeners() {
+  if (window.FirebaseAuth) {
+    const config = window.FirebaseAuth.getFirebaseConfig();
+    if (config) {
+      const apiKeyInput = document.getElementById('firebase-input-apikey');
+      const authDomainInput = document.getElementById('firebase-input-authdomain');
+      const projectIdInput = document.getElementById('firebase-input-projectid');
+      const appIdInput = document.getElementById('firebase-input-appid');
+      if (apiKeyInput && config.apiKey) apiKeyInput.value = config.apiKey;
+      if (authDomainInput && config.authDomain) authDomainInput.value = config.authDomain;
+      if (projectIdInput && config.projectId) projectIdInput.value = config.projectId;
+      if (appIdInput && config.appId) appIdInput.value = config.appId;
+    }
+
+    window.FirebaseAuth.onAuthStateChange(async (user) => {
+      updateAuthUI(user);
+      if (user) {
+        await window.SyncService.pullFromCloud(state);
+        saveStateToStorage();
+        renderApp();
+      }
+    });
+
+    window.FirebaseAuth.getUser().then(user => {
+      updateAuthUI(user);
+      if (user) {
+        window.SyncService.pullFromCloud(state).then(updated => {
+          if (updated) {
+            saveStateToStorage();
+            renderApp();
+          }
+        });
+      } else {
+        const guestDismissed = sessionStorage.getItem('fitpantry_guest_dismissed');
+        if (!guestDismissed && window.FirebaseAuth.isConfigured()) {
+          setTimeout(() => {
+            window.openAuthModal('login');
+          }, 350);
+        }
+      }
+    });
+  }
+
+  if (window.SyncService) {
+    window.SyncService.onSyncStatusChange(updateSyncUIStatus);
+    window.SyncService.getSyncStatus().then(updateSyncUIStatus);
   }
 }
 
