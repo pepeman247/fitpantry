@@ -3,12 +3,14 @@
  * Offline-First Caching Strategy for Gym Basements
  */
 
-const CACHE_NAME = 'fitpantry-el-green-v2.2';
+const CACHE_NAME = 'fitpantry-el-green-v2.4';
 
 const ASSETS_TO_PRECACHE = [
   './',
   './index.html',
   './app.js',
+  './firebaseClient.js',
+  './syncService.js',
   './data_presets.js',
   './styles.css',
   './manifest.json',
@@ -22,7 +24,10 @@ const ASSETS_TO_PRECACHE = [
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest',
   'https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js',
-  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js'
+  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js',
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -48,6 +53,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  // No interceptar llamadas a la API de Firebase ni Supabase
+  if (url.hostname.includes('googleapis.com') || url.hostname.includes('firebaseio.com') || url.hostname.includes('supabase.co')) return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {

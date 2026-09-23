@@ -1,0 +1,9 @@
+# Configuración local de credenciales (nunca subir a GitHub)
+firebase_config.js
+supabase_config.js
+
+# Sistema operativo y temporales
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
