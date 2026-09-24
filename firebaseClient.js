@@ -33,15 +33,23 @@
     return null;
   }
 
-  function saveFirebaseConfig(config) {
+  async function saveFirebaseConfig(config) {
     try {
       if (!config || !config.apiKey || !config.projectId) {
         throw new Error('Configuración incompleta: se requiere al menos apiKey y projectId.');
       }
       localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(config));
-      // Reinicializar
+      // Si ya existía una app inicializada, limpiarla
+      if (window.firebase && window.firebase.apps && window.firebase.apps.length) {
+        try {
+          await Promise.all(window.firebase.apps.map(a => a.delete()));
+        } catch (e) {
+          console.warn('[FirebaseClient] Error limpiando app previa:', e);
+        }
+      }
       firebaseApp = null;
       firestoreDb = null;
+      persistenceInitialized = false;
       initFirebase();
       return true;
     } catch (e) {
@@ -62,7 +70,7 @@
 
   function initFirebase() {
     if (firebaseApp && firestoreDb) {
-      return { app: firebaseApp, db: firestoreDb, auth: firebase.auth() };
+      return { app: firebaseApp, db: firestoreDb, auth: firebase.auth(firebaseApp) };
     }
 
     if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
@@ -75,9 +83,9 @@
 
     try {
       if (!firebase.apps.length) {
-        firebaseApp = firebase.initializeApp(config, 'fitpantry_el_app');
+        firebaseApp = firebase.initializeApp(config);
       } else {
-        firebaseApp = firebase.apps.find(a => a.name === 'fitpantry_el_app') || firebase.apps[0];
+        firebaseApp = firebase.apps[0];
       }
 
       firestoreDb = firebase.firestore(firebaseApp);
