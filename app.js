@@ -957,31 +957,53 @@ function renderWorkout() {
     for (let s = 1; s <= ex.series; s++) {
       const key = `${ex.id}_s${s}`;
       const log = state.workoutLogs[key] || { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
+      const prevSet = overload ? overload.allSets.find(p => p.set === s) : null;
 
       setsTableHtml += `
         <tr class="border-b border-white/[0.05] hover:bg-white/[0.02]">
-          <td class="py-2.5 px-2 text-xs font-semibold text-zinc-400 text-center font-mono">#${s}</td>
-          <td class="py-2.5 px-1 text-center">
-            <input type="number" step="0.5" placeholder="kg" value="${log.weight !== undefined ? log.weight : ''}"
-              onchange="saveWorkoutSetField('${ex.id}', ${s}, 'weight', this.value)"
-              class="w-16 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-2 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+          <td class="py-2 px-1 text-center font-mono">
+            <span class="text-xs font-semibold text-zinc-400 block">#${s}</span>
+            ${prevSet ? `
+              <button type="button" onclick="copySinglePrevSet('${ex.id}', ${s}, ${prevSet.weight}, ${prevSet.reps}, '${prevSet.rir || ''}')"
+                class="inline-block mt-0.5 px-1 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/25 active:scale-90 text-[9px] font-mono font-bold text-emerald-400 border border-emerald-500/20 transition-all"
+                title="Tocar para copiar marca anterior: ${prevSet.weight}kg x ${prevSet.reps}reps">
+                ${prevSet.weight}k
+              </button>
+            ` : ''}
           </td>
-          <td class="py-2.5 px-1 text-center">
-            <input type="number" placeholder="${ex.reps.split('-')[0] || '10'}" value="${log.reps !== undefined ? log.reps : ''}"
+          <td class="py-2 px-1 text-center">
+            <div class="inline-flex items-center justify-center gap-0.5">
+              <button type="button" onclick="adjustWorkoutSetWeight('${ex.id}', ${s}, -2.5)"
+                class="w-5 h-7 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 active:scale-90 text-[11px] font-black text-zinc-400 hover:text-white border border-white/[0.06] flex items-center justify-center transition-all select-none"
+                title="Bajar 2.5 kg">
+                -
+              </button>
+              <input type="number" step="0.5" id="input-weight-${ex.id}-${s}" placeholder="${prevSet ? prevSet.weight : 'kg'}" value="${log.weight !== undefined ? log.weight : ''}"
+                onchange="saveWorkoutSetField('${ex.id}', ${s}, 'weight', this.value)"
+                class="w-14 bg-zinc-900 border border-white/[0.08] rounded-lg py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+              <button type="button" onclick="adjustWorkoutSetWeight('${ex.id}', ${s}, 2.5)"
+                class="w-5 h-7 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 active:scale-90 text-[11px] font-black text-emerald-400 hover:text-emerald-300 border border-white/[0.06] flex items-center justify-center transition-all select-none"
+                title="Subir 2.5 kg">
+                +
+              </button>
+            </div>
+          </td>
+          <td class="py-2 px-1 text-center">
+            <input type="number" id="input-reps-${ex.id}-${s}" placeholder="${prevSet ? prevSet.reps : (ex.reps.split('-')[0] || '10')}" value="${log.reps !== undefined ? log.reps : ''}"
               onchange="saveWorkoutSetField('${ex.id}', ${s}, 'reps', this.value)"
-              class="w-14 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-2 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+              class="w-12 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-1.5 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
           </td>
-          <td class="py-2.5 px-1 text-center">
-            <input type="text" placeholder="${ex.rir}" value="${log.rir !== undefined ? log.rir : ''}"
+          <td class="py-2 px-1 text-center">
+            <input type="text" id="input-rir-${ex.id}-${s}" placeholder="${prevSet && prevSet.rir ? prevSet.rir : ex.rir}" value="${log.rir !== undefined ? log.rir : ''}"
               onchange="saveWorkoutSetField('${ex.id}', ${s}, 'rir', this.value)"
-              class="w-12 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-2 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+              class="w-11 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-1 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
           </td>
-          <td class="py-2.5 px-1 text-center">
+          <td class="py-2 px-1 text-center">
             <button type="button" onclick="toggleWorkoutSetPain('${ex.id}', ${s})" class="px-2 py-1 rounded-xl text-xs transition-all ${log.molestia_dolor ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold shadow-sm' : 'text-zinc-600 hover:text-zinc-400 border border-transparent'}" title="${log.molestia_dolor ? 'Molestia registrada en serie' : 'Reportar molestia articular/lumbar'}">
               ⚠️
             </button>
           </td>
-          <td class="py-2.5 px-2 text-center">
+          <td class="py-2 px-2 text-center">
             <input type="checkbox" ${log.completed ? 'checked' : ''}
               onchange="toggleWorkoutSetDone('${ex.id}', ${s}, this.checked, ${ex.descanso}, '${encodeURIComponent(exerciseVariant)}')"
               class="set-checkbox" />
@@ -1033,7 +1055,7 @@ function renderWorkout() {
             </div>
             <button onclick="copyPreviousWeekWeights('${ex.id}')" class="px-3 py-1.5 bg-gradient-to-r from-emerald-400/20 to-[#30d158]/20 hover:from-emerald-400/30 hover:to-[#30d158]/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors">
               <i data-lucide="copy" class="w-3 h-3"></i>
-              <span>Copiar</span>
+              <span>Copiar todo</span>
             </button>
           </div>
         ` : ''}
@@ -1050,10 +1072,10 @@ function renderWorkout() {
           <table class="w-full text-left">
             <thead>
               <tr class="text-[10px] uppercase text-zinc-400 tracking-wider border-b border-white/[0.06]">
-                <th class="py-1 px-2 text-center w-10">Serie</th>
-                <th class="py-1 px-1 text-center w-20">Kg</th>
-                <th class="py-1 px-1 text-center w-16">Reps</th>
-                <th class="py-1 px-1 text-center w-14">RIR</th>
+                <th class="py-1 px-1 text-center w-12">Serie</th>
+                <th class="py-1 px-1 text-center w-28">Kg (+/-)</th>
+                <th class="py-1 px-1 text-center w-14">Reps</th>
+                <th class="py-1 px-1 text-center w-12">RIR</th>
                 <th class="py-1 px-1 text-center w-10" title="Dolor / Molestia">Alerta</th>
                 <th class="py-1 px-2 text-center w-12">Hecho</th>
               </tr>
@@ -1231,16 +1253,115 @@ window.copyPreviousWeekWeights = function (currentExId) {
   overload.allSets.forEach(prevSet => {
     if (prevSet.set <= currentEx.series) {
       const key = `${currentEx.id}_s${prevSet.set}`;
-      if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false };
+      if (!state.workoutLogs[key]) state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
       state.workoutLogs[key].weight = prevSet.weight;
       state.workoutLogs[key].reps = prevSet.reps || '';
       state.workoutLogs[key].rir = prevSet.rir || '';
+
+      if (window.SyncService) {
+        window.SyncService.syncWorkoutSet({
+          semana: state.selectedWeek,
+          dia: state.selectedWorkoutDay,
+          ejercicioId: currentEx.id,
+          ejercicioNombre: currentEx.varianteGym || currentEx.patron,
+          setIndex: prevSet.set,
+          weight: prevSet.weight,
+          reps: prevSet.reps || '',
+          rir: prevSet.rir || '',
+          tempo_cumplido: state.workoutLogs[key].tempo_cumplido,
+          molestia_dolor: state.workoutLogs[key].molestia_dolor,
+          notas: state.workoutLogs[key].notas,
+          completed: state.workoutLogs[key].completed,
+          clientLogKey: key
+        });
+      }
     }
   });
 
   saveStateToStorage();
   renderWorkout();
   showToast('📈 Pesos de la semana anterior copiados', 'success');
+};
+
+window.copySinglePrevSet = function (exId, setIndex, weight, reps, rir) {
+  const key = `${exId}_s${setIndex}`;
+  if (!state.workoutLogs[key]) {
+    state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
+  }
+  state.workoutLogs[key].weight = weight;
+  if (reps) state.workoutLogs[key].reps = reps;
+  if (rir) state.workoutLogs[key].rir = rir;
+
+  saveStateToStorage();
+
+  const inputW = document.getElementById(`input-weight-${exId}-${setIndex}`);
+  if (inputW) inputW.value = weight;
+  const inputR = document.getElementById(`input-reps-${exId}-${setIndex}`);
+  if (inputR && reps) inputR.value = reps;
+  const inputRir = document.getElementById(`input-rir-${exId}-${setIndex}`);
+  if (inputRir && rir) inputRir.value = rir;
+
+  if (window.SyncService) {
+    const ex = state.workoutData.find(e => e.id === exId);
+    window.SyncService.syncWorkoutSet({
+      semana: state.selectedWeek,
+      dia: state.selectedWorkoutDay,
+      ejercicioId: exId,
+      ejercicioNombre: ex ? (ex.varianteGym || ex.patron) : exId,
+      setIndex: setIndex,
+      weight: weight,
+      reps: state.workoutLogs[key].reps,
+      rir: state.workoutLogs[key].rir,
+      tempo_cumplido: state.workoutLogs[key].tempo_cumplido,
+      molestia_dolor: state.workoutLogs[key].molestia_dolor,
+      notas: state.workoutLogs[key].notas,
+      completed: state.workoutLogs[key].completed,
+      clientLogKey: key
+    });
+  }
+
+  showToast(`Serie #${setIndex}: ${weight} kg × ${reps} reps copiadas`, 'info');
+};
+
+window.adjustWorkoutSetWeight = function (exId, setIndex, delta) {
+  const key = `${exId}_s${setIndex}`;
+  if (!state.workoutLogs[key]) {
+    state.workoutLogs[key] = { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
+  }
+
+  let currentWeight = parseFloat(state.workoutLogs[key].weight);
+  if (isNaN(currentWeight)) {
+    const ex = state.workoutData.find(e => e.id === exId);
+    const overload = ex ? getPreviousWeekOverload(ex) : null;
+    const prevSet = overload ? overload.allSets.find(p => p.set === setIndex) : null;
+    currentWeight = prevSet ? parseFloat(prevSet.weight) || 0 : 0;
+  }
+
+  const newWeight = Math.max(0, Math.round((currentWeight + delta) * 10) / 10);
+  state.workoutLogs[key].weight = newWeight;
+  saveStateToStorage();
+
+  const inputEl = document.getElementById(`input-weight-${exId}-${setIndex}`);
+  if (inputEl) inputEl.value = newWeight;
+
+  if (window.SyncService) {
+    const ex = state.workoutData.find(e => e.id === exId);
+    window.SyncService.syncWorkoutSet({
+      semana: state.selectedWeek,
+      dia: state.selectedWorkoutDay,
+      ejercicioId: exId,
+      ejercicioNombre: ex ? (ex.varianteGym || ex.patron) : exId,
+      setIndex: setIndex,
+      weight: newWeight,
+      reps: state.workoutLogs[key].reps,
+      rir: state.workoutLogs[key].rir,
+      tempo_cumplido: state.workoutLogs[key].tempo_cumplido,
+      molestia_dolor: state.workoutLogs[key].molestia_dolor,
+      notas: state.workoutLogs[key].notas,
+      completed: state.workoutLogs[key].completed,
+      clientLogKey: key
+    });
+  }
 };
 
 window.resetDayWorkoutPrompt = function () {
