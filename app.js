@@ -20,6 +20,8 @@ const state = {
   pantryView: 'athome',         // 'athome' | 'tobuy'
   selectedCategory: 'all',
   pantrySearch: '',
+  shoppingMode: false,
+  shoppingCart: {},
 
   // Active Datasets (Loaded from window.FIT_PRESETS or localStorage)
   pantryItems: [],
@@ -228,12 +230,14 @@ function startTimer(seconds, label = 'Descanso') {
 
   getAudioContext();
   renderTimerWidget();
+  updateFloatingTimerUI();
 
   state.timer.intervalId = setInterval(() => {
     if (state.timer.remaining > 1) {
       state.timer.remaining--;
       if (state.timer.remaining <= 3) playTone(520, 0.07);
       renderTimerWidget();
+      updateFloatingTimerUI();
     } else {
       state.timer.remaining = 0;
       stopTimer();
@@ -254,6 +258,7 @@ function togglePlayPauseTimer() {
         state.timer.remaining--;
         if (state.timer.remaining <= 3) playTone(520, 0.07);
         renderTimerWidget();
+        updateFloatingTimerUI();
       } else {
         state.timer.remaining = 0;
         stopTimer();
@@ -261,6 +266,7 @@ function togglePlayPauseTimer() {
       }
     }, 1000);
     renderTimerWidget();
+    updateFloatingTimerUI();
   }
 }
 
@@ -271,18 +277,21 @@ function stopTimer() {
     state.timer.intervalId = null;
   }
   renderTimerWidget();
+  updateFloatingTimerUI();
 }
 
 function adjustTimer(deltaSeconds) {
   state.timer.remaining = Math.max(0, state.timer.remaining + deltaSeconds);
   state.timer.total = Math.max(state.timer.total, state.timer.remaining);
   renderTimerWidget();
+  updateFloatingTimerUI();
 }
 
 function resetTimer() {
   stopTimer();
   state.timer.remaining = state.timer.total;
   renderTimerWidget();
+  updateFloatingTimerUI();
 }
 
 function onTimerFinished() {
@@ -290,9 +299,68 @@ function onTimerFinished() {
   if (state.settings.vibrate && 'vibrate' in navigator) {
     try { navigator.vibrate([250, 100, 250, 100, 350]); } catch (e) {}
   }
-  showToast(`⏱️ ¡Tiempo completado: ${state.timer.label}!`, 'success');
+  showToast(`⏱️ ¡Descanso completado: ${state.timer.label}!`, 'success');
   renderTimerWidget();
+  updateFloatingTimerUI();
+
+  // Auto-dismiss Floating HUD after 4 seconds
+  setTimeout(() => {
+    if (!state.timer.isRunning && state.timer.remaining <= 0) {
+      const hud = document.getElementById('floating-rest-timer-hud');
+      if (hud) hud.classList.add('hidden');
+    }
+  }, 4000);
 }
+
+function updateFloatingTimerUI() {
+  const hud = document.getElementById('floating-rest-timer-hud');
+  const displayEl = document.getElementById('hud-timer-countdown');
+  const labelEl = document.getElementById('hud-timer-target-name');
+  const toggleBtn = document.getElementById('hud-timer-toggle-btn');
+  const progressFill = document.getElementById('hud-timer-progress-fill');
+
+  if (!hud || !displayEl) return;
+
+  if (state.timer.isRunning || state.timer.remaining > 0) {
+    hud.classList.remove('hidden');
+  }
+
+  const mins = Math.floor(state.timer.remaining / 60);
+  const secs = state.timer.remaining % 60;
+  displayEl.textContent = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+  if (labelEl) {
+    const cleanLabel = (state.timer.label || 'Descanso').replace(/^Descanso:\s*/i, '');
+    labelEl.textContent = cleanLabel;
+  }
+
+  if (progressFill && state.timer.total > 0) {
+    const pct = ((state.timer.total - state.timer.remaining) / state.timer.total) * 100;
+    progressFill.style.width = `${pct}%`;
+  }
+
+  if (toggleBtn) {
+    toggleBtn.innerHTML = state.timer.isRunning
+      ? `<i data-lucide="pause" class="w-3.5 h-3.5"></i>`
+      : `<i data-lucide="play" class="w-3.5 h-3.5"></i>`;
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+window.adjustFloatingTimer = function(deltaSeconds) {
+  adjustTimer(deltaSeconds);
+};
+
+window.toggleFloatingTimer = function() {
+  togglePlayPauseTimer();
+};
+
+window.dismissFloatingTimer = function() {
+  stopTimer();
+  const hud = document.getElementById('floating-rest-timer-hud');
+  if (hud) hud.classList.add('hidden');
+};
 
 function renderTimerWidget() {
   const labelEl = document.getElementById('timer-exercise-label');
@@ -391,6 +459,12 @@ function switchTab(tabName) {
     }
   });
 
+  if (tabName === 'workout') {
+    requestScreenWakeLock();
+  } else {
+    releaseScreenWakeLock();
+  }
+
   if (tabName === 'nutrition') renderNutrition();
   if (tabName === 'pantry') renderPantry();
   if (tabName === 'workout') renderWorkout();
@@ -398,6 +472,213 @@ function switchTab(tabName) {
 
   if (window.lucide) lucide.createIcons();
 }
+
+// ============================================================================
+// SCREEN WAKE LOCK API (ALWAYS ON WORKOUT SCREEN)
+// ============================================================================
+
+let wakeLockSentinel = null;
+
+async function requestScreenWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      if (!wakeLockSentinel) {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => {
+          wakeLockSentinel = null;
+          updateWakeLockUI();
+        });
+        updateWakeLockUI();
+      }
+    } catch (err) {
+      console.warn('Wake Lock request:', err);
+    }
+  }
+}
+
+async function releaseScreenWakeLock() {
+  if (wakeLockSentinel) {
+    try {
+      await wakeLockSentinel.release();
+      wakeLockSentinel = null;
+    } catch (err) {
+      console.warn('Wake Lock release:', err);
+    }
+  }
+  updateWakeLockUI();
+}
+
+window.toggleScreenWakeLock = async function() {
+  if (wakeLockSentinel) {
+    await releaseScreenWakeLock();
+    showToast('💡 Pantalla en modo apagado automático', 'info');
+  } else {
+    await requestScreenWakeLock();
+    showToast('💡 Pantalla siempre activa durante el entreno', 'success');
+  }
+};
+
+function updateWakeLockUI() {
+  const dot = document.getElementById('workout-wakelock-dot');
+  if (dot) {
+    if (wakeLockSentinel) {
+      dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+    } else {
+      dot.className = 'w-2 h-2 rounded-full bg-zinc-600';
+    }
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.activeTab === 'workout') {
+    requestScreenWakeLock();
+  }
+});
+
+// ============================================================================
+// VISUAL BARBELL PLATE CALCULATOR (APPLE HIG)
+// ============================================================================
+
+const plateCalcState = {
+  targetWeight: 60,
+  barWeight: 20,
+  activeExId: null,
+  activeSetIndex: null
+};
+
+window.openPlateCalculatorModal = function(exId = null, setIndex = null, initialWeight = null) {
+  plateCalcState.activeExId = exId;
+  plateCalcState.activeSetIndex = setIndex;
+
+  let weight = initialWeight;
+  if (weight === null || weight === undefined || isNaN(weight) || weight <= 0) {
+    if (exId && setIndex) {
+      const key = `${exId}_s${setIndex}`;
+      weight = parseFloat(state.workoutLogs[key]?.weight) || 60;
+    } else {
+      weight = 60;
+    }
+  }
+  plateCalcState.targetWeight = weight;
+  const inputEl = document.getElementById('plate-calc-target-weight');
+  if (inputEl) inputEl.value = weight;
+
+  const modal = document.getElementById('modal-plate-calculator');
+  if (modal) modal.classList.remove('hidden');
+
+  calculatePlatesUI();
+  if (window.lucide) lucide.createIcons();
+};
+
+window.closePlateCalculatorModal = function() {
+  const modal = document.getElementById('modal-plate-calculator');
+  if (modal) modal.classList.add('hidden');
+};
+
+window.setPlateCalcBar = function(barWeight) {
+  plateCalcState.barWeight = barWeight;
+  [20, 15, 25, 0].forEach(w => {
+    const btn = document.getElementById(`plate-bar-${w}`);
+    if (btn) {
+      if (w === barWeight) {
+        btn.className = "py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all text-center";
+      } else {
+        btn.className = "py-1.5 rounded-xl bg-zinc-900/80 text-zinc-400 hover:text-zinc-200 border border-white/[0.05] transition-all text-center";
+      }
+    }
+  });
+
+  const barLabel = document.getElementById('plate-calc-bar-label');
+  if (barLabel) {
+    const names = { 20: 'Olímpica (20 kg)', 15: 'Olímpica Mujer (15 kg)', 25: 'Trap Bar (25 kg)', 0: 'Sin Barra / Máquina (0 kg)' };
+    barLabel.textContent = names[barWeight] || `${barWeight} kg`;
+  }
+
+  calculatePlatesUI();
+};
+
+window.adjustPlateCalcWeight = function(delta) {
+  plateCalcState.targetWeight = Math.max(0, plateCalcState.targetWeight + delta);
+  const inputEl = document.getElementById('plate-calc-target-weight');
+  if (inputEl) inputEl.value = plateCalcState.targetWeight;
+  calculatePlatesUI();
+};
+
+window.calculatePlatesUI = function() {
+  const inputEl = document.getElementById('plate-calc-target-weight');
+  if (inputEl) plateCalcState.targetWeight = Math.max(0, parseFloat(inputEl.value) || 0);
+
+  const netWeight = Math.max(0, plateCalcState.targetWeight - plateCalcState.barWeight);
+  const perSide = netWeight / 2;
+
+  const perSideEl = document.getElementById('plate-calc-per-side');
+  if (perSideEl) perSideEl.textContent = `${perSide.toFixed(2).replace(/\.00$/, '')} kg`;
+
+  const availableDiscs = [
+    { kg: 25, name: '25 kg', color: 'bg-red-500 text-white', border: 'border-red-400', heightClass: 'h-14 w-3.5', dot: 'bg-red-500' },
+    { kg: 20, name: '20 kg', color: 'bg-blue-500 text-white', border: 'border-blue-400', heightClass: 'h-14 w-3.5', dot: 'bg-blue-500' },
+    { kg: 15, name: '15 kg', color: 'bg-amber-400 text-zinc-950', border: 'border-amber-300', heightClass: 'h-12 w-3', dot: 'bg-amber-400' },
+    { kg: 10, name: '10 kg', color: 'bg-emerald-500 text-white', border: 'border-emerald-400', heightClass: 'h-10 w-2.5', dot: 'bg-emerald-500' },
+    { kg: 5, name: '5 kg', color: 'bg-zinc-100 text-zinc-950', border: 'border-white', heightClass: 'h-8 w-2.5', dot: 'bg-zinc-100' },
+    { kg: 2.5, name: '2.5 kg', color: 'bg-zinc-800 text-zinc-200', border: 'border-zinc-500', heightClass: 'h-7 w-2', dot: 'bg-zinc-700' },
+    { kg: 1.25, name: '1.25 kg', color: 'bg-zinc-400 text-zinc-950', border: 'border-zinc-300', heightClass: 'h-6 w-1.5', dot: 'bg-zinc-400' }
+  ];
+
+  let remaining = perSide;
+  const breakdown = [];
+  const visualDiscs = [];
+
+  availableDiscs.forEach(disc => {
+    let count = 0;
+    while (remaining >= disc.kg - 0.001) {
+      count++;
+      remaining = Math.round((remaining - disc.kg) * 100) / 100;
+      visualDiscs.push(disc);
+    }
+    if (count > 0) {
+      breakdown.push({ ...disc, count });
+    }
+  });
+
+  const sleeve = document.getElementById('plate-visual-sleeve');
+  if (sleeve) {
+    if (visualDiscs.length === 0) {
+      sleeve.innerHTML = `<span class="text-[10px] text-zinc-500 italic pl-2">Manga vacía</span>`;
+    } else {
+      sleeve.innerHTML = visualDiscs.map(d => `
+        <div class="${d.color} ${d.border} ${d.heightClass} border rounded-sm flex items-center justify-center shadow-md select-none shrink-0" title="${d.name}">
+        </div>
+      `).join('');
+    }
+  }
+
+  const listEl = document.getElementById('plate-discs-list');
+  if (listEl) {
+    if (breakdown.length === 0) {
+      listEl.innerHTML = `<p class="text-zinc-500 text-center py-2 text-[11px]">No se requieren discos adicionales para este peso.</p>`;
+    } else {
+      listEl.innerHTML = breakdown.map(item => `
+        <div class="flex items-center justify-between p-2 rounded-xl bg-zinc-900/60 border border-white/[0.04]">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full ${item.dot}"></span>
+            <span class="font-bold text-zinc-200">${item.count}× Disco de ${item.kg} kg</span>
+          </div>
+          <span class="text-xs font-mono font-semibold text-emerald-400">+${(item.count * item.kg).toFixed(1)} kg/lado</span>
+        </div>
+      `).join('');
+    }
+  }
+};
+
+window.applyPlateCalculatorWeight = function() {
+  if (plateCalcState.activeExId && plateCalcState.activeSetIndex) {
+    const inputEl = document.getElementById(`input-weight-${plateCalcState.activeExId}-${plateCalcState.activeSetIndex}`);
+    if (inputEl) inputEl.value = plateCalcState.targetWeight;
+    saveWorkoutSetField(plateCalcState.activeExId, plateCalcState.activeSetIndex, 'weight', plateCalcState.targetWeight);
+    showToast(`🏋️ Peso aplicado: ${plateCalcState.targetWeight} kg`, 'success');
+  }
+  closePlateCalculatorModal();
+};
 
 // ============================================================================
 // 5. NUTRITION MODULE (APPLE FITNESS GREEN MINIMALISM)
@@ -467,7 +748,7 @@ function renderNutrition() {
     return;
   }
 
-  // 4. Calculate Daily Macros Totals
+  // 4. Calculate Daily Macros Totals & Consumed Totals
   const totals = meals.reduce(
     (acc, m) => {
       acc.cal += m.calorias || 0;
@@ -480,28 +761,86 @@ function renderNutrition() {
     { cal: 0, prot: 0, carbs: 0, fat: 0, fiber: 0 }
   );
 
+  const consumed = meals.reduce(
+    (acc, m) => {
+      if (state.nutritionLogs[m.id]) {
+        acc.cal += m.calorias || 0;
+        acc.prot += m.proteina || 0;
+        acc.carbs += m.carbohidratos || 0;
+        acc.fat += m.grasas || 0;
+        acc.count++;
+      }
+      return acc;
+    },
+    { cal: 0, prot: 0, carbs: 0, fat: 0, count: 0 }
+  );
+
+  const calPct = totals.cal > 0 ? Math.min(100, Math.round((consumed.cal / totals.cal) * 100)) : 0;
+  const protPct = totals.prot > 0 ? Math.min(100, Math.round((consumed.prot / totals.prot) * 100)) : 0;
+  const carbsPct = totals.carbs > 0 ? Math.min(100, Math.round((consumed.carbs / totals.carbs) * 100)) : 0;
+  const fatPct = totals.fat > 0 ? Math.min(100, Math.round((consumed.fat / totals.fat) * 100)) : 0;
+
   if (macrosCard) {
     macrosCard.innerHTML = `
-      <div class="grid grid-cols-5 gap-1.5 text-center">
-        <div class="glass-pill p-2 rounded-2xl border border-emerald-500/20 bg-emerald-950/20">
-          <span class="text-[9px] uppercase font-bold text-emerald-300/80 tracking-wider block">Kcal</span>
-          <span class="text-xs font-black text-emerald-300 font-mono">${Math.round(totals.cal)}</span>
+      <div class="glass-panel p-4 rounded-3xl border border-white/[0.08] bg-[#0c120e]/80 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs font-bold">📊</span>
+            <h4 class="text-xs font-extrabold text-white tracking-tight">Macros Diarios Consumidos</h4>
+          </div>
+          <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${consumed.count === meals.length ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-800 text-zinc-400'}">
+            ${consumed.count} / ${meals.length} comidas
+          </span>
         </div>
-        <div class="glass-pill p-2 rounded-2xl">
-          <span class="text-[9px] uppercase font-bold text-zinc-400 tracking-wider block">Proteína</span>
-          <span class="text-xs font-bold text-zinc-100 font-mono">${Math.round(totals.prot)}g</span>
-        </div>
-        <div class="glass-pill p-2 rounded-2xl">
-          <span class="text-[9px] uppercase font-bold text-zinc-400 tracking-wider block">Carbos</span>
-          <span class="text-xs font-bold text-zinc-100 font-mono">${Math.round(totals.carbs)}g</span>
-        </div>
-        <div class="glass-pill p-2 rounded-2xl">
-          <span class="text-[9px] uppercase font-bold text-zinc-400 tracking-wider block">Grasas</span>
-          <span class="text-xs font-bold text-zinc-100 font-mono">${Math.round(totals.fat)}g</span>
-        </div>
-        <div class="glass-pill p-2 rounded-2xl">
-          <span class="text-[9px] uppercase font-bold text-zinc-400 tracking-wider block">Fibra</span>
-          <span class="text-xs font-bold text-zinc-100 font-mono">${Math.round(totals.fiber)}g</span>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <!-- Kcal -->
+          <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[10px] uppercase font-bold text-emerald-400">🔥 Calorías</span>
+              <span class="text-[10px] font-mono text-zinc-400">${calPct}%</span>
+            </div>
+            <div class="text-xs font-black font-mono text-white mb-1.5">${Math.round(consumed.cal)} <span class="text-zinc-500 text-[10px]">/ ${Math.round(totals.cal)} kcal</span></div>
+            <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-emerald-400 to-[#30d158] rounded-full transition-all duration-500" style="width: ${calPct}%"></div>
+            </div>
+          </div>
+
+          <!-- Proteína -->
+          <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[10px] uppercase font-bold text-blue-400">🍗 Proteína</span>
+              <span class="text-[10px] font-mono text-zinc-400">${protPct}%</span>
+            </div>
+            <div class="text-xs font-black font-mono text-white mb-1.5">${Math.round(consumed.prot)}g <span class="text-zinc-500 text-[10px]">/ ${Math.round(totals.prot)}g</span></div>
+            <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-500" style="width: ${protPct}%"></div>
+            </div>
+          </div>
+
+          <!-- Carbos -->
+          <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[10px] uppercase font-bold text-amber-400">🍚 Carbos</span>
+              <span class="text-[10px] font-mono text-zinc-400">${carbsPct}%</span>
+            </div>
+            <div class="text-xs font-black font-mono text-white mb-1.5">${Math.round(consumed.carbs)}g <span class="text-zinc-500 text-[10px]">/ ${Math.round(totals.carbs)}g</span></div>
+            <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full transition-all duration-500" style="width: ${carbsPct}%"></div>
+            </div>
+          </div>
+
+          <!-- Grasas -->
+          <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[10px] uppercase font-bold text-rose-400">🥑 Grasas</span>
+              <span class="text-[10px] font-mono text-zinc-400">${fatPct}%</span>
+            </div>
+            <div class="text-xs font-black font-mono text-white mb-1.5">${Math.round(consumed.fat)}g <span class="text-zinc-500 text-[10px]">/ ${Math.round(totals.fat)}g</span></div>
+            <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full transition-all duration-500" style="width: ${fatPct}%"></div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -644,6 +983,108 @@ function renderPantry() {
     btnAtHome.className = 'flex-1 py-2 text-xs font-semibold rounded-xl text-zinc-400 hover:text-zinc-200 flex items-center justify-center gap-1.5 transition-all';
   }
 
+  // SHOPPING MODE VIEW
+  if (state.shoppingMode) {
+    const checkedCount = Object.keys(state.shoppingCart).filter(id => state.shoppingCart[id]).length;
+    
+    // Group by Aldi aisles
+    const aislesMap = {};
+    toBuyItems.forEach(item => {
+      const aisle = getAldiAisle(item.categoria, item.producto);
+      if (!aislesMap[aisle]) aislesMap[aisle] = [];
+      aislesMap[aisle].push(item);
+    });
+
+    let shoppingHtml = `
+      <div class="glass-panel p-4 rounded-3xl border border-emerald-500/40 bg-emerald-950/30 shadow-xl flex flex-col gap-3 mb-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-2xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-lg border border-emerald-500/30">
+              🛒
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-white tracking-tight">Supermercado Aldi</h3>
+              <p class="text-[11px] text-emerald-300/80 font-mono">${checkedCount} de ${toBuyItems.length} en carrito</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="checkoutShoppingList()" class="px-3 py-2 bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 active:scale-95 text-zinc-950 rounded-xl text-xs font-black shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all">
+              <i data-lucide="check" class="w-4 h-4 stroke-[3px]"></i>
+              <span>Finalizar (${checkedCount})</span>
+            </button>
+            <button onclick="togglePantryShoppingMode()" class="p-2 text-zinc-400 hover:text-white bg-zinc-900 rounded-xl border border-white/[0.08]" title="Salir del modo supermercado">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+        <p class="text-[11px] text-zinc-400">Toca cada producto a medida que lo añades al carrito. Al finalizar, pasarán automáticamente a "En casa".</p>
+      </div>
+    `;
+
+    if (toBuyItems.length === 0) {
+      shoppingHtml += `
+        <div class="text-center py-12 px-4 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30">
+          <p class="text-xs text-zinc-400">¡Tu lista de la compra está vacía! Todos los productos están en casa.</p>
+        </div>
+      `;
+    } else {
+      Object.keys(aislesMap).sort().forEach(aisle => {
+        const itemsInAisle = aislesMap[aisle];
+        shoppingHtml += `
+          <div class="mb-4">
+            <h4 class="text-xs font-black text-emerald-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>${aisle}</span>
+              <span class="text-[10px] text-zinc-500 font-mono">(${itemsInAisle.length})</span>
+            </h4>
+            <div class="space-y-2">
+        `;
+
+        itemsInAisle.forEach(item => {
+          const isChecked = !!state.shoppingCart[item.id];
+          shoppingHtml += `
+            <div onclick="toggleShoppingItemCheck('${item.id}')"
+              class="glass-panel p-3 rounded-2xl border cursor-pointer select-none transition-all flex items-center justify-between gap-3 ${
+                isChecked
+                  ? 'border-emerald-500/40 bg-emerald-950/20 shopping-checked'
+                  : 'border-white/[0.07] hover:border-emerald-500/30 bg-zinc-900/70'
+              }">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
+                  isChecked
+                    ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-bold'
+                    : 'border-white/20 bg-zinc-800/80 text-transparent'
+                }">
+                  <i data-lucide="check" class="w-4 h-4 stroke-[3px]"></i>
+                </div>
+                <div class="truncate">
+                  <h4 class="text-xs font-bold text-zinc-100 truncate">${item.producto}</h4>
+                  <p class="text-[11px] text-zinc-400 truncate">
+                    ${item.marca ? `Marca: ${item.marca} • ` : ''}Cant: <strong class="text-emerald-300 font-mono">${item.cantidadSemanal || item.cantidadMensual || '1 ud'}</strong>
+                  </p>
+                </div>
+              </div>
+              ${item.aptoCeliaco ? `
+                <span class="text-[9px] font-bold text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-800/40 shrink-0">
+                  🌾 Sin gluten
+                </span>
+              ` : ''}
+            </div>
+          `;
+        });
+
+        shoppingHtml += `
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    container.innerHTML = shoppingHtml;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  // STANDARD PANTRY VIEW
   // Category Chips
   const categories = Array.from(new Set(state.pantryItems.map(item => item.categoria).filter(Boolean))).sort();
   if (categoriesContainer) {
@@ -689,16 +1130,28 @@ function renderPantry() {
     return true;
   });
 
+  let topShoppingBtn = '';
+  if (toBuyItems.length > 0) {
+    topShoppingBtn = `
+      <button onclick="togglePantryShoppingMode()" class="w-full py-2.5 px-4 mb-3 bg-gradient-to-r from-emerald-500/15 via-green-500/20 to-emerald-500/15 hover:from-emerald-500/25 hover:to-emerald-500/25 border border-emerald-500/35 rounded-2xl text-xs font-black text-emerald-300 flex items-center justify-center gap-2 shadow-sm transition-all">
+        <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+        <span>Abrir Modo Supermercado Aldi (${toBuyItems.length} pendientes)</span>
+      </button>
+    `;
+  }
+
   if (filtered.length === 0) {
     container.innerHTML = `
+      ${topShoppingBtn}
       <div class="text-center py-12 px-4 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30">
         <p class="text-xs text-zinc-400">No hay productos en esta vista.</p>
       </div>
     `;
+    if (window.lucide) lucide.createIcons();
     return;
   }
 
-  let html = '';
+  let html = topShoppingBtn;
   filtered.forEach(item => {
     const isAtHome = item.status === 'athome';
     html += `
@@ -763,6 +1216,74 @@ function renderPantry() {
 window.setPantryView = function (v) {
   state.pantryView = v;
   saveStateToStorage();
+  renderPantry();
+};
+
+function getAldiAisle(categoria, producto) {
+  const text = `${categoria || ''} ${producto || ''}`.toLowerCase();
+  if (text.includes('fruta') || text.includes('verdura') || text.includes('aguacate') || text.includes('platano') || text.includes('espinaca') || text.includes('tomate') || text.includes('patata') || text.includes('arandano') || text.includes('fresa') || text.includes('manzana')) {
+    return '🥬 Frutas y Verduras Frescas';
+  }
+  if (text.includes('pollo') || text.includes('carne') || text.includes('ternera') || text.includes('salmon') || text.includes('atun') || text.includes('merluza') || text.includes('pavo') || text.includes('pescado')) {
+    return '🥩 Carnes, Aves y Pescados';
+  }
+  if (text.includes('huevo') || text.includes('leche') || text.includes('queso') || text.includes('yogur') || text.includes('cottage') || text.includes('mozzarella') || text.includes('kefir')) {
+    return '🥛 Lácteos, Huevos y Refrigerados';
+  }
+  if (text.includes('congelad') || text.includes('hielo')) {
+    return '❄️ Congelados y Especialidades';
+  }
+  return '🥫 Despensa, Panadería y Cereales';
+}
+
+window.togglePantryShoppingMode = function () {
+  state.shoppingMode = !state.shoppingMode;
+  if (state.shoppingMode) {
+    state.pantryView = 'tobuy';
+  }
+  renderPantry();
+};
+
+window.toggleShoppingItemCheck = function (itemId) {
+  state.shoppingCart[itemId] = !state.shoppingCart[itemId];
+  renderPantry();
+};
+
+window.checkoutShoppingList = function () {
+  const checkedIds = Object.keys(state.shoppingCart).filter(id => state.shoppingCart[id]);
+  if (checkedIds.length === 0) {
+    showToast('Selecciona al menos un producto añadido al carrito', 'info');
+    return;
+  }
+
+  checkedIds.forEach(id => {
+    const item = state.pantryItems.find(i => i.id === id);
+    if (item) {
+      item.status = 'athome';
+      if (window.SyncService) {
+        window.SyncService.syncPantryItem({
+          id: item.id,
+          categoria: item.categoria,
+          producto: item.producto,
+          marca: item.marca,
+          formato: item.formato,
+          cantidadSemanal: item.cantidadSemanal,
+          cantidadMensual: item.cantidadMensual,
+          aptoCeliaco: item.aptoCeliaco,
+          notas: item.notas,
+          status: 'athome'
+        });
+      }
+    }
+  });
+
+  state.shoppingCart = {};
+  saveStateToStorage();
+  playCelebrationFanfare();
+  if (window.confetti) confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+  showToast(`🎉 ¡Compra finalizada! ${checkedIds.length} artículos guardados en la despensa.`, 'success');
+  state.shoppingMode = false;
+  state.pantryView = 'athome';
   renderPantry();
 };
 
@@ -847,6 +1368,75 @@ function getPreviousWeekOverload(currentExercise) {
   };
 }
 
+function getExercise4WeekTrajectory(currentExercise) {
+  const patron = currentExercise.patron || '';
+  const trajectory = [];
+  let firstWeight = null;
+  let lastWeight = null;
+
+  for (let w = 1; w <= 4; w++) {
+    const exInWeek = state.workoutData.find(e => e.semana === w && (e.patron === patron || e.orden === currentExercise.orden));
+    let maxW = 0;
+    if (exInWeek) {
+      for (let s = 1; s <= exInWeek.series; s++) {
+        const log = state.workoutLogs[`${exInWeek.id}_s${s}`];
+        if (log && log.completed && parseFloat(log.weight) > maxW) {
+          maxW = parseFloat(log.weight);
+        }
+      }
+    }
+    trajectory.push({ week: w, weight: maxW });
+    if (maxW > 0) {
+      if (firstWeight === null) firstWeight = maxW;
+      lastWeight = maxW;
+    }
+  }
+
+  let deltaText = '';
+  if (firstWeight && lastWeight && lastWeight > firstWeight) {
+    const diff = Math.round((lastWeight - firstWeight) * 10) / 10;
+    const pct = Math.round((diff / firstWeight) * 100);
+    deltaText = `+${diff}k (+${pct}%)`;
+  }
+
+  return { trajectory, deltaText };
+}
+
+function checkIsPersonalRecord(ex, currentWeight, currentReps) {
+  const w = parseFloat(currentWeight);
+  const r = parseFloat(currentReps);
+  if (!w || isNaN(w) || w <= 0) return false;
+  const currentE1RM = w * (1 + (r || 10) / 30);
+
+  const patron = ex.patron || ex.varianteGym || '';
+  let highestPrev1RM = 0;
+  let highestPrevWeight = 0;
+  let hasHistory = false;
+
+  state.workoutData.forEach(otherEx => {
+    if (otherEx.patron === patron || otherEx.orden === ex.orden) {
+      for (let s = 1; s <= otherEx.series; s++) {
+        const log = state.workoutLogs[`${otherEx.id}_s${s}`];
+        if (log && log.completed) {
+          const logW = parseFloat(log.weight);
+          const logR = parseFloat(log.reps) || 10;
+          if (logW > 0) {
+            hasHistory = true;
+            if (logW > highestPrevWeight) highestPrevWeight = logW;
+            const e1rm = logW * (1 + logR / 30);
+            if (e1rm > highestPrev1RM) highestPrev1RM = e1rm;
+          }
+        }
+      }
+    }
+  });
+
+  if (hasHistory && (w > highestPrevWeight || currentE1RM > highestPrev1RM * 1.005)) {
+    return true;
+  }
+  return false;
+}
+
 function renderWorkout() {
   const container = document.getElementById('workout-exercises-list');
   const weeksContainer = document.getElementById('workout-weeks-selector');
@@ -895,23 +1485,29 @@ function renderWorkout() {
   });
   if (daysContainer) daysContainer.innerHTML = daysHtml;
 
-  // 3. Location Mode Toggle (Apple Segmented Style)
+  // 3. Location Mode Toggle & Wake Lock Indicator
   if (locationToggle) {
     locationToggle.innerHTML = `
-      <button onclick="setTrainingLocation('gym')" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-        state.trainingLocation === 'gym'
-          ? 'bg-zinc-100 text-zinc-950 shadow-sm'
-          : 'text-zinc-400 hover:text-zinc-200'
-      }">
-        🏢 Gimnasio
-      </button>
-      <button onclick="setTrainingLocation('casa')" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-        state.trainingLocation === 'casa'
-          ? 'bg-zinc-100 text-zinc-950 shadow-sm'
-          : 'text-zinc-400 hover:text-zinc-200'
-      }">
-        🏠 Casa (Banco Romano)
-      </button>
+      <div class="flex items-center gap-1.5 w-full">
+        <button onclick="setTrainingLocation('gym')" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+          state.trainingLocation === 'gym'
+            ? 'bg-zinc-100 text-zinc-950 shadow-sm'
+            : 'text-zinc-400 hover:text-zinc-200'
+        }">
+          🏢 Gimnasio
+        </button>
+        <button onclick="setTrainingLocation('casa')" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+          state.trainingLocation === 'casa'
+            ? 'bg-zinc-100 text-zinc-950 shadow-sm'
+            : 'text-zinc-400 hover:text-zinc-200'
+        }">
+          🏠 Casa (Banco)
+        </button>
+        <button type="button" onclick="toggleScreenWakeLock()" id="workout-wakelock-btn" class="px-2.5 py-2 rounded-xl bg-zinc-900/90 border border-white/[0.08] hover:bg-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm" title="Pantalla siempre encendida">
+          <span id="workout-wakelock-dot" class="w-2 h-2 rounded-full ${wakeLockSentinel ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}"></span>
+          <i data-lucide="sun" class="w-3.5 h-3.5 text-zinc-300"></i>
+        </button>
+      </div>
     `;
   }
 
@@ -920,14 +1516,17 @@ function renderWorkout() {
     e => e.semana === state.selectedWeek && e.dia === state.selectedWorkoutDay
   );
 
-  // 5. Calculate Progress
+  // 5. Calculate Progress & Spinal Telemetry
   let totalSets = 0;
   let completedSets = 0;
+  let lumbarPainCount = 0;
+
   exercises.forEach(ex => {
     totalSets += ex.series;
     for (let s = 1; s <= ex.series; s++) {
       const log = state.workoutLogs[`${ex.id}_s${s}`];
       if (log && log.completed) completedSets++;
+      if (log && log.molestia_dolor) lumbarPainCount++;
     }
   });
 
@@ -945,10 +1544,32 @@ function renderWorkout() {
     return;
   }
 
-  // 6. Render Exercise Cards
   let exHtml = '';
+
+  // SPINAL SAFETY ALERT (FEATURE 8: SEMÁFORO RAQUÍDEO)
+  if (lumbarPainCount >= 2) {
+    exHtml += `
+      <div class="mb-4 p-4 rounded-3xl bg-amber-950/40 border border-amber-500/40 text-amber-200 flex flex-col gap-2.5 shadow-lg shadow-amber-950/30 animate-pulse">
+        <div class="flex items-center gap-2">
+          <span class="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 font-black text-sm">🛡️ Semáforo Raquídeo</span>
+          <span class="text-xs font-black text-amber-300 uppercase tracking-wider">Alerta Lumbar (${lumbarPainCount} avisos)</span>
+        </div>
+        <p class="text-xs text-amber-200/90 leading-relaxed font-medium">
+          Has registrado 2 o más avisos de molestia en la sesión. Se activa el protocolo clínico de protección raquídea:
+        </p>
+        <ul class="text-[11px] text-amber-100/80 space-y-1 list-disc list-inside">
+          <li><strong>Descompresión Axial:</strong> Cuélgate de una barra durante 30 segundos de forma pasiva.</li>
+          <li><strong>Bracing Intra-abdominal:</strong> Asegura la contracción isométrica del core y mantén pelvis neutra.</li>
+          <li><strong>Ajuste de Carga:</strong> Reduce el peso un 15-20% o pausa las series con compresión espinal vertical.</li>
+        </ul>
+      </div>
+    `;
+  }
+
+  // 6. Render Exercise Cards
   exercises.forEach(ex => {
     const overload = getPreviousWeekOverload(ex);
+    const trajectoryData = getExercise4WeekTrajectory(ex);
     const exerciseVariant = state.trainingLocation === 'gym'
       ? (ex.varianteGym || ex.patron)
       : (ex.varianteCasa || ex.patron);
@@ -958,11 +1579,15 @@ function renderWorkout() {
       const key = `${ex.id}_s${s}`;
       const log = state.workoutLogs[key] || { weight: '', reps: '', rir: '', completed: false, molestia_dolor: false, tempo_cumplido: true, notas: '' };
       const prevSet = overload ? overload.allSets.find(p => p.set === s) : null;
+      const isPR = log.completed && checkIsPersonalRecord(ex, log.weight, log.reps);
 
       setsTableHtml += `
         <tr class="border-b border-white/[0.05] hover:bg-white/[0.02]">
           <td class="py-2 px-1 text-center font-mono">
-            <span class="text-xs font-semibold text-zinc-400 block">#${s}</span>
+            <div class="flex items-center justify-center gap-1">
+              <span class="text-xs font-semibold text-zinc-400">#${s}</span>
+              ${isPR ? `<span class="badge-pr px-1 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[8px] font-black uppercase">🏆PR</span>` : ''}
+            </div>
             ${prevSet ? `
               <button type="button" onclick="copySinglePrevSet('${ex.id}', ${s}, ${prevSet.weight}, ${prevSet.reps}, '${prevSet.rir || ''}')"
                 class="inline-block mt-0.5 px-1 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/25 active:scale-90 text-[9px] font-mono font-bold text-emerald-400 border border-emerald-500/20 transition-all"
@@ -980,23 +1605,28 @@ function renderWorkout() {
               </button>
               <input type="number" step="0.5" id="input-weight-${ex.id}-${s}" placeholder="${prevSet ? prevSet.weight : 'kg'}" value="${log.weight !== undefined ? log.weight : ''}"
                 onchange="saveWorkoutSetField('${ex.id}', ${s}, 'weight', this.value)"
-                class="w-14 bg-zinc-900 border border-white/[0.08] rounded-lg py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+                class="w-13 bg-zinc-900 border border-white/[0.08] rounded-lg py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
               <button type="button" onclick="adjustWorkoutSetWeight('${ex.id}', ${s}, 2.5)"
                 class="w-5 h-7 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 active:scale-90 text-[11px] font-black text-emerald-400 hover:text-emerald-300 border border-white/[0.06] flex items-center justify-center transition-all select-none"
                 title="Subir 2.5 kg">
                 +
+              </button>
+              <button type="button" onclick="openPlateCalculatorModal('${ex.id}', ${s}, document.getElementById('input-weight-${ex.id}-${s}')?.value || ${log.weight || 0})"
+                class="w-6 h-7 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 active:scale-90 text-[10px] text-zinc-400 hover:text-emerald-300 border border-white/[0.06] flex items-center justify-center transition-all select-none ml-0.5"
+                title="Calculadora visual de discos de barra">
+                🏋️
               </button>
             </div>
           </td>
           <td class="py-2 px-1 text-center">
             <input type="number" id="input-reps-${ex.id}-${s}" placeholder="${prevSet ? prevSet.reps : (ex.reps.split('-')[0] || '10')}" value="${log.reps !== undefined ? log.reps : ''}"
               onchange="saveWorkoutSetField('${ex.id}', ${s}, 'reps', this.value)"
-              class="w-12 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-1.5 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+              class="w-11 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-1 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
           </td>
           <td class="py-2 px-1 text-center">
             <input type="text" id="input-rir-${ex.id}-${s}" placeholder="${prevSet && prevSet.rir ? prevSet.rir : ex.rir}" value="${log.rir !== undefined ? log.rir : ''}"
               onchange="saveWorkoutSetField('${ex.id}', ${s}, 'rir', this.value)"
-              class="w-11 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-1 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
+              class="w-10 bg-zinc-900/90 border border-white/[0.08] rounded-xl px-1 py-1 text-xs text-center text-zinc-100 font-mono focus:border-emerald-400 focus:outline-none" />
           </td>
           <td class="py-2 px-1 text-center">
             <button type="button" onclick="toggleWorkoutSetPain('${ex.id}', ${s})" class="px-2 py-1 rounded-xl text-xs transition-all ${log.molestia_dolor ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold shadow-sm' : 'text-zinc-600 hover:text-zinc-400 border border-transparent'}" title="${log.molestia_dolor ? 'Molestia registrada en serie' : 'Reportar molestia articular/lumbar'}">
@@ -1011,6 +1641,12 @@ function renderWorkout() {
         </tr>
       `;
     }
+
+    // Trajectory indicators
+    const trajectoryPills = trajectoryData.trajectory.map(t => {
+      const isCur = t.week === state.selectedWeek;
+      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${isCur ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 font-black' : 'bg-zinc-900 text-zinc-400'}">S${t.week}:${t.weight > 0 ? `${t.weight}k` : '-'}</span>`;
+    }).join(' ');
 
     exHtml += `
       <div class="glass-panel p-4 rounded-3xl border border-white/[0.07] flex flex-col gap-3">
@@ -1044,6 +1680,19 @@ function renderWorkout() {
           </div>
         </div>
 
+        <!-- 4-Week Strength Progression Trajectory (Feature 5) -->
+        <div class="bg-zinc-900/60 p-2.5 rounded-2xl border border-white/[0.04] flex items-center justify-between gap-2 flex-wrap text-xs">
+          <div class="flex items-center gap-1 flex-wrap">
+            <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mr-1">Progreso 4S:</span>
+            ${trajectoryPills}
+          </div>
+          ${trajectoryData.deltaText ? `
+            <span class="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 font-bold text-[10px]">
+              📈 ${trajectoryData.deltaText}
+            </span>
+          ` : ''}
+        </div>
+
         ${overload ? `
           <div class="bg-gradient-to-r from-emerald-950/30 to-green-950/20 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between gap-2 text-xs">
             <div class="flex items-center gap-2 min-w-0">
@@ -1072,9 +1721,9 @@ function renderWorkout() {
           <table class="w-full text-left">
             <thead>
               <tr class="text-[10px] uppercase text-zinc-400 tracking-wider border-b border-white/[0.06]">
-                <th class="py-1 px-1 text-center w-12">Serie</th>
-                <th class="py-1 px-1 text-center w-28">Kg (+/-)</th>
-                <th class="py-1 px-1 text-center w-14">Reps</th>
+                <th class="py-1 px-1 text-center w-14">Serie</th>
+                <th class="py-1 px-1 text-center w-36">Kg (+/-) 🏋️</th>
+                <th class="py-1 px-1 text-center w-13">Reps</th>
                 <th class="py-1 px-1 text-center w-12">RIR</th>
                 <th class="py-1 px-1 text-center w-10" title="Dolor / Molestia">Alerta</th>
                 <th class="py-1 px-2 text-center w-12">Hecho</th>
@@ -1217,6 +1866,16 @@ window.toggleWorkoutSetDone = function (exId, setIndex, isDone, restSeconds, enc
 
   if (isDone) {
     playTone(660, 0.12);
+
+    const ex = state.workoutData.find(e => e.id === exId);
+    const weight = parseFloat(state.workoutLogs[key]?.weight);
+    const reps = parseFloat(state.workoutLogs[key]?.reps);
+    if (ex && weight > 0 && checkIsPersonalRecord(ex, weight, reps)) {
+      playCelebrationFanfare();
+      if (window.confetti) confetti({ particleCount: 95, spread: 65, origin: { y: 0.65 } });
+      showToast(`🏆 ¡NUEVO RÉCORD PERSONAL! ${weight} kg × ${reps || 10} reps en ${name}`, 'success');
+    }
+
     if (state.settings.autoStartTimer && restSeconds > 0) {
       startTimer(restSeconds, `Descanso: ${name}`);
       showToast(`⏱️ Descanso iniciado (${restSeconds}s)`, 'info');
