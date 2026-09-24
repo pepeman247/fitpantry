@@ -50,6 +50,15 @@ const state = {
     setIndex: 1
   },
 
+  // Daily Pre-Workout Readiness Check-in (Feature 5)
+  dailyCheckin: null, // { date: 'YYYY-MM-DD', energy: 'high'|'normal'|'low', spine: 'good'|'tight'|'pain' }
+
+  // 100% Gluten-Free Food Swaps (Feature 2)
+  nutritionSwaps: {}, // { [mealId]: { name, amount, macros } }
+
+  // Exercise Alternatives (Feature 3)
+  exerciseSwaps: {}, // { [exId]: { altName, equipment, biomechanics, barWeight } }
+
   // Preferences
   settings: {
     autoStartTimer: true,
@@ -70,6 +79,9 @@ function saveStateToStorage() {
       nutritionData: state.nutritionData,
       workoutLogs: state.workoutLogs,
       nutritionLogs: state.nutritionLogs,
+      dailyCheckin: state.dailyCheckin,
+      nutritionSwaps: state.nutritionSwaps,
+      exerciseSwaps: state.exerciseSwaps,
       settings: state.settings
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -93,6 +105,9 @@ function loadStateFromStorage() {
     state.nutritionData = parsed.nutritionData || [];
     state.workoutLogs = parsed.workoutLogs || {};
     state.nutritionLogs = parsed.nutritionLogs || {};
+    state.dailyCheckin = parsed.dailyCheckin || null;
+    state.nutritionSwaps = parsed.nutritionSwaps || {};
+    state.exerciseSwaps = parsed.exerciseSwaps || {};
     if (parsed.settings) state.settings = { ...state.settings, ...parsed.settings };
 
     return true;
@@ -850,6 +865,7 @@ function renderNutrition() {
   let mealsHtml = '';
   meals.forEach(m => {
     const isEaten = !!state.nutritionLogs[m.id];
+    const activeSwap = state.nutritionSwaps && state.nutritionSwaps[m.id];
     mealsHtml += `
       <div class="glass-panel p-4 rounded-3xl border border-white/[0.07] flex flex-col gap-2.5 transition-all ${isEaten ? 'opacity-65 bg-zinc-950/40' : ''}">
         <div class="flex items-start justify-between gap-2">
@@ -865,8 +881,22 @@ function renderNutrition() {
               <span class="text-[10px] text-emerald-400 font-semibold bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-800/30">
                 100% Sin Gluten
               </span>
+              <button type="button" onclick="openFoodSwapModal('${m.id}')" class="px-2 py-0.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-emerald-300 border border-white/[0.08] text-[10px] font-bold flex items-center gap-1 transition-all" title="Cambiar alimento por alternativa equivalente">
+                <i data-lucide="refresh-cw" class="w-2.5 h-2.5 text-emerald-400"></i>
+                <span>Cambiar</span>
+              </button>
             </div>
             <h3 class="text-sm font-bold text-zinc-100 leading-snug tracking-tight">${m.plato}</h3>
+            ${activeSwap ? `
+              <div class="mt-1.5 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-2 text-xs">
+                <div class="truncate text-[11px]">
+                  <span class="font-bold text-emerald-400">🔄 Sustitución activa:</span>
+                  <span class="text-emerald-200 font-medium ml-1">${activeSwap.name} (${activeSwap.amount})</span>
+                  <span class="text-[10px] text-zinc-400 block font-mono">${activeSwap.macros}</span>
+                </div>
+                <button type="button" onclick="resetFoodSwap('${m.id}')" class="text-[10px] text-zinc-400 hover:text-rose-400 font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-white/[0.05]" title="Restablecer original">✕ Quitar</button>
+              </div>
+            ` : ''}
           </div>
 
           <button onclick="toggleMealEaten('${m.id}')" class="shrink-0 p-2 rounded-2xl border transition-all ${
@@ -1570,9 +1600,12 @@ function renderWorkout() {
   exercises.forEach(ex => {
     const overload = getPreviousWeekOverload(ex);
     const trajectoryData = getExercise4WeekTrajectory(ex);
-    const exerciseVariant = state.trainingLocation === 'gym'
+    const coachSuggestion = getSmartCoachSuggestion(ex);
+    const activeSwap = state.exerciseSwaps && state.exerciseSwaps[ex.id];
+    const baseVariant = state.trainingLocation === 'gym'
       ? (ex.varianteGym || ex.patron)
       : (ex.varianteCasa || ex.patron);
+    const exerciseVariant = activeSwap ? activeSwap.altName : baseVariant;
 
     let setsTableHtml = '';
     for (let s = 1; s <= ex.series; s++) {
@@ -1666,14 +1699,29 @@ function renderWorkout() {
             </div>
             <h3 class="text-base font-bold text-zinc-100 leading-snug tracking-tight">${exerciseVariant}</h3>
             <p class="text-[11px] text-zinc-400 mt-0.5">Patrón: <span class="text-zinc-300">${ex.patron}</span></p>
+
+            ${activeSwap ? `
+              <div class="mt-2 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-2 text-xs">
+                <div class="truncate text-[11px]">
+                  <span class="font-bold text-emerald-400">⇄ Alternativa activa:</span>
+                  <span class="text-emerald-200 font-medium ml-1">${activeSwap.altName} (${activeSwap.equipment})</span>
+                  <span class="text-[10px] text-zinc-400 block">${activeSwap.biomechanics}</span>
+                </div>
+                <button type="button" onclick="resetExerciseSwap('${ex.id}')" class="text-[10px] text-zinc-400 hover:text-rose-400 font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-white/[0.05]" title="Volver al original">✕ Quitar</button>
+              </div>
+            ` : ''}
           </div>
 
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button onclick="openFocusModeModal('${ex.id}')" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400/20 to-[#30d158]/20 hover:from-emerald-400/30 hover:to-[#30d158]/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 transition-all" title="Modo Foco Manos Sudorosas">
+          <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            <button onclick="openExerciseSwapModal('${ex.id}')" class="px-2.5 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-emerald-300 border border-white/[0.07] text-xs font-semibold flex items-center gap-1 transition-all shadow-sm" title="Cambiar ejercicio por máquina ocupada o molestia">
+              <i data-lucide="shuffle" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>Alternativa</span>
+            </button>
+            <button onclick="openFocusModeModal('${ex.id}')" class="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400/20 to-[#30d158]/20 hover:from-emerald-400/30 hover:to-[#30d158]/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 transition-all" title="Modo Foco Manos Sudorosas">
               <i data-lucide="zap" class="w-3.5 h-3.5"></i>
               <span>Foco</span>
             </button>
-            <button onclick="startTimer(${ex.descanso}, '${encodeURIComponent(exerciseVariant)}')" class="px-2.5 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-white/[0.07] text-xs font-medium flex items-center gap-1 transition-all shadow-sm">
+            <button onclick="startTimer(${ex.descanso}, '${encodeURIComponent(exerciseVariant)}')" class="px-2 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-white/[0.07] text-xs font-medium flex items-center gap-1 transition-all shadow-sm">
               <i data-lucide="timer" class="w-4 h-4 text-emerald-400"></i>
               <span>${ex.descanso}s</span>
             </button>
@@ -1692,6 +1740,22 @@ function renderWorkout() {
             </span>
           ` : ''}
         </div>
+
+        <!-- Smart Coach Progression Objective (Feature 4) -->
+        ${coachSuggestion ? `
+          <div onclick="applySmartCoachSuggestion('${ex.id}', ${coachSuggestion.weight}, ${coachSuggestion.reps})" class="cursor-pointer bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-emerald-500/5 hover:from-emerald-500/20 border border-emerald-500/25 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs transition-all shadow-sm">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-6 h-6 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs shrink-0 font-bold">🎯</span>
+              <div class="truncate">
+                <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Smart Coach (S${state.selectedWeek}):</span>
+                <span class="text-[11px] font-semibold text-zinc-200">${coachSuggestion.text}</span>
+              </div>
+            </div>
+            <span class="text-[10px] font-black text-zinc-950 bg-emerald-400 hover:bg-emerald-300 px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1 shadow-sm">
+              <span>Aplicar</span> ⚡
+            </span>
+          </div>
+        ` : ''}
 
         ${overload ? `
           <div class="bg-gradient-to-r from-emerald-950/30 to-green-950/20 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between gap-2 text-xs">
@@ -1739,6 +1803,7 @@ function renderWorkout() {
   });
 
   container.innerHTML = exHtml;
+  renderDailyCheckinUI();
   if (window.lucide) lucide.createIcons();
 }
 
@@ -3008,6 +3073,701 @@ function initCloudSyncListeners() {
     window.SyncService.getSyncStatus().then(updateSyncUIStatus);
   }
 }
+
+// ============================================================================
+// 12. SMART NUTRITION & PANTRY BRIDGE (FEATURE 1: AUTO-SYNC WEEK MENU TO ALDI)
+// ============================================================================
+
+window.generateShoppingListFromWeekMenu = function () {
+  const week = state.selectedWeek;
+  const weekMeals = state.nutritionData.filter(item => item.semana === week);
+  if (!weekMeals.length) {
+    showToast(`No hay menús registrados para la Semana ${week}`, 'warning');
+    return;
+  }
+
+  let addedCount = 0;
+  // Match pantry products with meal ingredients or names
+  state.pantryItems.forEach(pi => {
+    const prodName = (pi.producto || '').toLowerCase().trim();
+    if (!prodName) return;
+
+    const isRequired = weekMeals.some(m => {
+      const ing = (m.ingredientes || '').toLowerCase();
+      const plato = (m.plato || '').toLowerCase();
+      return ing.includes(prodName) || plato.includes(prodName) || (prodName.length > 4 && (ing.includes(prodName.slice(0, -1)) || plato.includes(prodName.slice(0, -1))));
+    });
+
+    if (isRequired && pi.status !== 'tobuy') {
+      pi.status = 'tobuy';
+      addedCount++;
+    }
+  });
+
+  state.pantryView = 'tobuy';
+  saveStateToStorage();
+  renderPantry();
+  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  playTone(700, 0.15);
+  showToast(`⚡ Lista de la compra generada para Semana ${week} (${addedCount} productos añadidos a comprar)`, 'success');
+};
+
+// ============================================================================
+// 13. SMART 100% GLUTEN-FREE FOOD SWAPS (FEATURE 2)
+// ============================================================================
+
+const GLUTEN_FREE_SWAPS = {
+  // Proteínas Magras
+  pollo: {
+    category: 'Proteína Magra',
+    options: [
+      { name: 'Lomo de pavo a la plancha', amount: '180g', macros: '38g P · 0g C · 3g G', reason: 'Proteína limpia idéntica, digestión rápida sin gluten' },
+      { name: 'Filetes de merluza o bacalao', amount: '200g', macros: '36g P · 0g C · 2g G', reason: 'Excelente biodisponibilidad y cero pesadez gástrica' },
+      { name: 'Tofu firme marinado en AOVE', amount: '220g', macros: '32g P · 4g C · 12g G', reason: 'Opción 100% vegetal con isoflavonas y calcio' },
+      { name: 'Claras de huevo (220ml) + 1 huevo entero', amount: '270g', macros: '34g P · 1g C · 5g G', reason: 'Puntuación DIAAS máxima en absorción proteica' }
+    ]
+  },
+  ternera: {
+    category: 'Carnes Rojas y Hierro',
+    options: [
+      { name: 'Solomillo de cerdo ibérico magro', amount: '170g', macros: '35g P · 0g C · 6g G', reason: 'Rico en zinc, creatina y tiamina sin gluten' },
+      { name: 'Hamburguesas 100% vacuno de corral (Aldi)', amount: '2x 90g', macros: '36g P · 0g C · 8g G', reason: 'Comodidad de preparación en 4 minutos' },
+      { name: 'Pechuga de pollo + 15ml Aceite Oliva Virgen Extra', amount: '180g + 15ml', macros: '38g P · 0g C · 14g G', reason: 'Mismo perfil calórico con grasas monoinsaturadas' }
+    ]
+  },
+  salmon: {
+    category: 'Pescados Grasos y Omega-3',
+    options: [
+      { name: 'Caballa o sardinas en AOVE (Aldi)', amount: '160g', macros: '33g P · 0g C · 16g G', reason: 'Poderoso aporte de Omega-3 EPA/DHA antiinflamatorio' },
+      { name: 'Trucha arcoíris al horno', amount: '180g', macros: '34g P · 0g C · 11g G', reason: 'Pescado azul suave y de proximidad' },
+      { name: 'Atún al natural (2 latas) + 20g nueces', amount: '140g + 20g', macros: '36g P · 2g C · 14g G', reason: 'Proteína pura con ácidos grasos esenciales' }
+    ]
+  },
+  arroz: {
+    category: 'Carbohidratos Complejos',
+    options: [
+      { name: 'Patatas cocidas o asadas con piel', amount: '320g', macros: '6g P · 64g C · 0.5g G', reason: 'Mayor índice de saciedad y potasio muscular' },
+      { name: 'Boniato / batata asada al vapor', amount: '280g', macros: '4g P · 62g C · 1g G', reason: 'Menor impacto glucémico y rico en betacarotenos' },
+      { name: 'Copos de avena sin gluten certificados', amount: '90g', macros: '12g P · 60g C · 6g G', reason: 'Betaglucanos para la salud cardiovascular y digestiva' },
+      { name: 'Quinoa real lavada', amount: '90g en crudo', macros: '12g P · 58g C · 5g G', reason: 'Carbohidrato complejo completo sin gluten' }
+    ]
+  },
+  yogur: {
+    category: 'Lácteos y Desayunos',
+    options: [
+      { name: 'Queso fresco batido 0% + 15g almendras', amount: '250g + 15g', macros: '26g P · 10g C · 8g G', reason: 'Mayor concentración de caseína micelar saciante' },
+      { name: 'Kéfir natural sin lactosa (Aldi)', amount: '300ml', macros: '13g P · 12g C · 8g G', reason: 'Probiótico natural para la microbiota intestinal' },
+      { name: 'Skyr natural de estilo islandés', amount: '220g', macros: '24g P · 8g C · 1g G', reason: 'Cremoso, denso y ultra rico en proteína' }
+    ]
+  }
+};
+
+let currentSwapMealId = null;
+
+window.openFoodSwapModal = function (mealId) {
+  currentSwapMealId = mealId;
+  const meal = state.nutritionData.find(m => m.id === mealId);
+  if (!meal) return;
+
+  const modal = document.getElementById('modal-food-swap');
+  const nameEl = document.getElementById('swap-current-meal-name');
+  const ingEl = document.getElementById('swap-current-ingredients');
+  const listEl = document.getElementById('food-swap-alternatives-list');
+
+  if (nameEl) nameEl.textContent = `${meal.comida}: ${meal.plato}`;
+  if (ingEl) ingEl.textContent = meal.ingredientes;
+
+  // Determine swap group
+  const text = `${meal.plato} ${meal.ingredientes}`.toLowerCase();
+  let groupKey = 'pollo';
+  if (text.includes('salmón') || text.includes('salmon') || text.includes('pescado') || text.includes('trucha')) groupKey = 'salmon';
+  else if (text.includes('ternera') || text.includes('carne') || text.includes('lomo')) groupKey = 'ternera';
+  else if (text.includes('arroz') || text.includes('patata') || text.includes('boniato') || text.includes('avena')) groupKey = 'arroz';
+  else if (text.includes('yogur') || text.includes('kéfir') || text.includes('queso') || text.includes('skyr')) groupKey = 'yogur';
+
+  const group = GLUTEN_FREE_SWAPS[groupKey] || GLUTEN_FREE_SWAPS.pollo;
+
+  let html = '';
+  group.options.forEach((opt, idx) => {
+    html += `
+      <div onclick="applyFoodSwap('${encodeURIComponent(opt.name)}', '${encodeURIComponent(opt.amount)}', '${encodeURIComponent(opt.macros)}')"
+        class="p-3 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 border border-white/[0.06] hover:border-emerald-500/40 cursor-pointer transition-all flex flex-col gap-1 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-white text-xs">${opt.name}</span>
+          <span class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold">${opt.amount}</span>
+        </div>
+        <div class="flex items-center justify-between text-[10px] text-zinc-400 font-mono">
+          <span>${opt.macros}</span>
+          <span class="text-emerald-400 font-bold">Seleccionar ➔</span>
+        </div>
+        <p class="text-[10px] text-zinc-400 italic">${opt.reason}</p>
+      </div>
+    `;
+  });
+
+  if (listEl) listEl.innerHTML = html;
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.closeFoodSwapModal = function () {
+  const modal = document.getElementById('modal-food-swap');
+  if (modal) modal.classList.add('hidden');
+  currentSwapMealId = null;
+};
+
+window.applyFoodSwap = function (nameEncoded, amountEncoded, macrosEncoded) {
+  if (!currentSwapMealId) return;
+  const name = decodeURIComponent(nameEncoded);
+  const amount = decodeURIComponent(amountEncoded);
+  const macros = decodeURIComponent(macrosEncoded);
+
+  state.nutritionSwaps = state.nutritionSwaps || {};
+  state.nutritionSwaps[currentSwapMealId] = { name, amount, macros };
+
+  saveStateToStorage();
+  renderNutrition();
+  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  playTone(880, 0.12);
+  showToast(`✅ Alimento sustituido: ${name}`, 'success');
+  closeFoodSwapModal();
+};
+
+window.resetFoodSwap = function (mealId) {
+  if (!state.nutritionSwaps || !state.nutritionSwaps[mealId]) return;
+  delete state.nutritionSwaps[mealId];
+  saveStateToStorage();
+  renderNutrition();
+  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  showToast('Alimento restablecido al original', 'info');
+};
+
+window.resetFoodSwapCurrentMeal = function () {
+  if (currentSwapMealId) {
+    resetFoodSwap(currentSwapMealId);
+    closeFoodSwapModal();
+  }
+};
+
+// ============================================================================
+// 14. EXERCISE ALTERNATIVES (FEATURE 3: MÁQUINA OCUPADA / MOLESTIA)
+// ============================================================================
+
+const EXERCISE_ALTERNATIVES = {
+  press_banca: [
+    { name: 'Press plano con mancuernas', equipment: 'Mancuernas + Banco', biomechanics: 'Mayor libertad articular en muñecas y hombros, activación pectoral simétrica', barWeight: 0 },
+    { name: 'Press de pecho en máquina convergente', equipment: 'Máquina guiada', biomechanics: 'Máxima estabilidad y aislamiento sin sobrecarga en manguito rotador', barWeight: 0 },
+    { name: 'Fondos en paralelas lastrados o asistidos', equipment: 'Barras paralelas', biomechanics: 'Gran estímulo en haz inferior del pectoral y tríceps', barWeight: 0 }
+  ],
+  press_militar: [
+    { name: 'Press militar sentado con mancuernas', equipment: 'Mancuernas + Banco 75º', biomechanics: 'Cero carga axial en la columna lumbar al apoyar la espalda', barWeight: 0 },
+    { name: 'Press de hombros en máquina guiada', equipment: 'Máquina sentada', biomechanics: 'Tensión constante y seguridad articular absoluta', barWeight: 0 },
+    { name: 'Elevaciones laterales en polea baja', equipment: 'Polea', biomechanics: 'Aislamiento lateral puro sin compresión de discos intervertebrales', barWeight: 0 }
+  ],
+  sentadilla: [
+    { name: 'Prensa inclinada de discos 45º', equipment: 'Prensa', biomechanics: 'Cero carga axial en la columna, ideal para fatiga lumbar o espalda sobrecargada', barWeight: 0 },
+    { name: 'Sentadilla Goblet pesada con mancuerna', equipment: 'Mancuerna pesada', biomechanics: 'Posición vertical del tronco que protege charnela T11-L3 y L4-S1', barWeight: 0 },
+    { name: 'Sentadilla Búlgara con mancuernas', equipment: 'Mancuernas + Banco', biomechanics: 'Gran hipertrofia unilateral sin requerir cargas pesadas axiales', barWeight: 0 }
+  ],
+  peso_muerto: [
+    { name: 'Peso muerto con barra hexagonal (Trap Bar)', equipment: 'Trap Bar (25 kg)', biomechanics: 'Centro de gravedad alineado con caderas, menor momento flexor lumbar', barWeight: 25 },
+    { name: 'Peso muerto rumano con mancuernas', equipment: 'Mancuernas', biomechanics: 'Control preciso de la bisagra de cadera y estiramiento de isquios', barWeight: 0 },
+    { name: 'Hip Thrust con barra o máquina', equipment: 'Banco + Barra / Smith', biomechanics: 'Máxima activación del glúteo con compresión axial nula', barWeight: 20 }
+  ],
+  jalon_pecho: [
+    { name: 'Dominadas con banda o máquina asistida', equipment: 'Barra dominadas', biomechanics: 'Cadena cinética cerrada para estímulo dorsal masivo', barWeight: 0 },
+    { name: 'Remo en polea baja agarre neutro', equipment: 'Polea baja', biomechanics: 'Apoyo lumbar seguro y alineación de romboides y trapecio medio', barWeight: 0 },
+    { name: 'Remo con mancuerna unilateral con banco', equipment: 'Mancuerna + Banco', biomechanics: 'Soporte 3 puntos que descarga por completo la columna vertebral', barWeight: 0 }
+  ],
+  remo: [
+    { name: 'Remo en máquina con soporte pectoral', equipment: 'Máquina con apoyo', biomechanics: 'Descompresión total de erectores espinales y aislamiento dorsal', barWeight: 0 },
+    { name: 'Remo con mancuernas en banco inclinado 45º', equipment: 'Mancuernas + Banco', biomechanics: 'El apoyo en esternón elimina cualquier tensión en la espalda baja', barWeight: 0 },
+    { name: 'Remo en polea alta con agarre ancho', equipment: 'Polea', biomechanics: 'Excelente para deltoides posterior y dorsal superior', barWeight: 0 }
+  ],
+  hip_thrust: [
+    { name: 'Hip Thrust en máquina Multipower / Smith', equipment: 'Máquina Smith', biomechanics: 'Fácil colocación de carga y trayectoria guiada ultra segura', barWeight: 0 },
+    { name: 'Puente de glúteo unilateral con mancuerna', equipment: 'Mancuerna en suelo', biomechanics: 'Activación de glúteo medio y corrección de asimetrías de cadera', barWeight: 0 },
+    { name: 'Extensión de cadera en polea con tobillera', equipment: 'Polea baja', biomechanics: 'Tensión pico en contracción isométrica máxima de glúteo', barWeight: 0 }
+  ]
+};
+
+let currentSwapExId = null;
+
+window.openExerciseSwapModal = function (exId) {
+  currentSwapExId = exId;
+  const ex = state.workoutData.find(e => e.id === exId);
+  if (!ex) return;
+
+  const modal = document.getElementById('modal-exercise-swap');
+  const nameEl = document.getElementById('swap-current-exercise-name');
+  const listEl = document.getElementById('exercise-swap-alternatives-list');
+
+  const baseVariant = state.trainingLocation === 'gym' ? (ex.varianteGym || ex.patron) : (ex.varianteCasa || ex.patron);
+  if (nameEl) nameEl.textContent = `${ex.orden}. ${baseVariant} (${ex.patron})`;
+
+  const text = `${ex.varianteGym || ''} ${ex.varianteCasa || ''} ${ex.patron || ''}`.toLowerCase();
+  let groupKey = 'press_banca';
+  if (text.includes('sentadilla') || text.includes('prensa') || text.includes('cuadriceps')) groupKey = 'sentadilla';
+  else if (text.includes('peso muerto') || text.includes('rumano') || text.includes('isquios')) groupKey = 'peso_muerto';
+  else if (text.includes('militar') || text.includes('hombro') || text.includes('deltoides')) groupKey = 'press_militar';
+  else if (text.includes('jalon') || text.includes('dominada') || text.includes('dorsal')) groupKey = 'jalon_pecho';
+  else if (text.includes('remo') || text.includes('espalda')) groupKey = 'remo';
+  else if (text.includes('thrust') || text.includes('gluteo') || text.includes('patada')) groupKey = 'hip_thrust';
+
+  const alternatives = EXERCISE_ALTERNATIVES[groupKey] || EXERCISE_ALTERNATIVES.press_banca;
+
+  let html = '';
+  alternatives.forEach((alt, idx) => {
+    html += `
+      <div onclick="applyExerciseSwap('${encodeURIComponent(alt.name)}', '${encodeURIComponent(alt.equipment)}', '${encodeURIComponent(alt.biomechanics)}', ${alt.barWeight || 0})"
+        class="p-3 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 border border-white/[0.06] hover:border-emerald-500/40 cursor-pointer transition-all flex flex-col gap-1 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-white text-xs">${alt.name}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-bold">${alt.equipment}</span>
+        </div>
+        <p class="text-[11px] text-zinc-300 leading-snug">${alt.biomechanics}</p>
+        <span class="text-[10px] text-emerald-400 font-bold self-end mt-0.5">Seleccionar Variante ➔</span>
+      </div>
+    `;
+  });
+
+  if (listEl) listEl.innerHTML = html;
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.closeExerciseSwapModal = function () {
+  const modal = document.getElementById('modal-exercise-swap');
+  if (modal) modal.classList.add('hidden');
+  currentSwapExId = null;
+};
+
+window.applyExerciseSwap = function (nameEncoded, equipEncoded, bioEncoded, barWeight) {
+  if (!currentSwapExId) return;
+  const altName = decodeURIComponent(nameEncoded);
+  const equipment = decodeURIComponent(equipEncoded);
+  const biomechanics = decodeURIComponent(bioEncoded);
+
+  state.exerciseSwaps = state.exerciseSwaps || {};
+  state.exerciseSwaps[currentSwapExId] = { altName, equipment, biomechanics, barWeight };
+
+  saveStateToStorage();
+  renderWorkout();
+  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  playTone(880, 0.12);
+  showToast(`⇄ Variante activa: ${altName}`, 'success');
+  closeExerciseSwapModal();
+};
+
+window.resetExerciseSwap = function (exId) {
+  if (!state.exerciseSwaps || !state.exerciseSwaps[exId]) return;
+  delete state.exerciseSwaps[exId];
+  saveStateToStorage();
+  renderWorkout();
+  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  showToast('Ejercicio restablecido al original', 'info');
+};
+
+window.resetCurrentExerciseSwap = function () {
+  if (currentSwapExId) {
+    resetExerciseSwap(currentSwapExId);
+    closeExerciseSwapModal();
+  }
+};
+
+// ============================================================================
+// 15. SMART COACH PROGRESSION SUGGESTIONS (FEATURE 4)
+// ============================================================================
+
+function getSmartCoachSuggestion(ex) {
+  if (state.selectedWeek === 1) {
+    return {
+      text: 'Semana 1: Calibra el peso base para dejar 2-3 reps en recámara (RIR 2-3).',
+      weight: 0,
+      reps: parseInt(ex.reps.split('-')[0]) || 10
+    };
+  }
+
+  const prevWeek = state.selectedWeek - 1;
+  const prevEx = state.workoutData.find(
+    e => e.semana === prevWeek && e.orden === ex.orden && (e.dia === ex.dia || e.patron === ex.patron)
+  );
+  if (!prevEx) return null;
+
+  let bestWeight = 0;
+  let bestReps = 0;
+  let bestRir = 2;
+
+  for (let s = 1; s <= prevEx.series; s++) {
+    const log = state.workoutLogs[`${prevEx.id}_s${s}`];
+    if (log && log.completed && parseFloat(log.weight) > bestWeight) {
+      bestWeight = parseFloat(log.weight);
+      bestReps = parseFloat(log.reps) || 10;
+      bestRir = parseFloat(log.rir) !== undefined ? parseFloat(log.rir) : 2;
+    }
+  }
+
+  if (bestWeight <= 0) return null;
+
+  if (bestRir >= 2) {
+    const nextWeight = bestWeight + 2.5;
+    return {
+      text: `RIR holgado la semana anterior. Sugerencia: Subir a ${nextWeight} kg manteniendo ${bestReps} reps.`,
+      weight: nextWeight,
+      reps: bestReps
+    };
+  } else {
+    return {
+      text: `RIR ajustado (cerca del fallo). Sugerencia: Consolidar ${bestWeight} kg buscando +1 repetición (${bestReps + 1} reps).`,
+      weight: bestWeight,
+      reps: bestReps + 1
+    };
+  }
+}
+
+window.applySmartCoachSuggestion = function (exId, weight, reps) {
+  const ex = state.workoutData.find(e => e.id === exId);
+  if (!ex) return;
+
+  for (let s = 1; s <= ex.series; s++) {
+    const key = `${ex.id}_s${s}`;
+    const cur = state.workoutLogs[key] || {};
+    if (!cur.completed) {
+      if (weight > 0) cur.weight = weight;
+      if (reps > 0) cur.reps = reps;
+      state.workoutLogs[key] = cur;
+
+      const wInput = document.getElementById(`input-weight-${ex.id}-${s}`);
+      const rInput = document.getElementById(`input-reps-${ex.id}-${s}`);
+      if (wInput && weight > 0) wInput.value = weight;
+      if (rInput && reps > 0) rInput.value = reps;
+    }
+  }
+
+  saveStateToStorage();
+  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  playTone(700, 0.1);
+  showToast('🎯 Meta Smart Coach aplicada a las series de hoy', 'success');
+};
+
+// ============================================================================
+// 16. DAILY PRE-WORKOUT READINESS CHECK-IN (FEATURE 5)
+// ============================================================================
+
+window.setDailyCheckin = function (category, value) {
+  state.dailyCheckin = state.dailyCheckin || {};
+  state.dailyCheckin[category] = value;
+  state.dailyCheckin.date = new Date().toISOString().split('T')[0];
+  saveStateToStorage();
+  renderDailyCheckinUI();
+  playTone(600, 0.08);
+};
+
+function renderDailyCheckinUI() {
+  const checkin = state.dailyCheckin || { energy: 'normal', spine: 'good' };
+  const dateEl = document.getElementById('checkin-date-label');
+  if (dateEl) {
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  ['high', 'normal', 'low'].forEach(lvl => {
+    const btn = document.getElementById(`btn-checkin-energy-${lvl}`);
+    if (btn) {
+      const active = checkin.energy === lvl;
+      btn.className = `py-1.5 rounded-xl text-[11px] font-bold transition-all ${
+        active ? 'bg-gradient-to-r from-emerald-400 to-[#30d158] text-zinc-950 shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-white/[0.05]'
+      }`;
+    }
+  });
+
+  ['good', 'tight', 'pain'].forEach(lvl => {
+    const btn = document.getElementById(`btn-checkin-spine-${lvl}`);
+    if (btn) {
+      const active = checkin.spine === lvl;
+      btn.className = `py-1.5 rounded-xl text-[11px] font-bold transition-all ${
+        active 
+          ? (lvl === 'good' ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50' : (lvl === 'tight' ? 'bg-yellow-500/30 text-yellow-300 border border-yellow-500/50' : 'bg-rose-500/30 text-rose-300 border border-rose-500/50'))
+          : 'bg-zinc-900 text-zinc-400 hover:text-white border border-white/[0.05]'
+      }`;
+    }
+  });
+
+  const recBox = document.getElementById('checkin-recommendation-box');
+  if (recBox) {
+    if (checkin.spine === 'pain') {
+      recBox.innerHTML = `
+        <div class="text-rose-300 flex items-start gap-1.5">
+          <span class="text-sm">🔴</span>
+          <div>
+            <strong>Alerta Lumbar Activa:</strong> Evita ejercicios axiales con compresión vertical (sentadilla libre o peso muerto pesado). Pulsa <strong>⇄ Alternativa</strong> para cambiar a Prensa o Hip Thrust guiado.
+          </div>
+        </div>
+      `;
+    } else if (checkin.spine === 'tight') {
+      recBox.innerHTML = `
+        <div class="text-yellow-300 flex items-start gap-1.5">
+          <span class="text-sm">🟡</span>
+          <div>
+            <strong>Tensión Lumbar Detectada:</strong> Realiza 3 ciclos de McGill Big 3 antes de comenzar. Mantén RIR 2-3 en compuestos y cuida el brace abdominal.
+          </div>
+        </div>
+      `;
+    } else if (checkin.energy === 'low') {
+      recBox.innerHTML = `
+        <div class="text-zinc-300 flex items-start gap-1.5">
+          <span class="text-sm">😴</span>
+          <div>
+            <strong>Fatiga General:</strong> Prioriza la técnica limpia y reduce 1 serie efectiva si notas pérdida de velocidad en la barra.
+          </div>
+        </div>
+      `;
+    } else {
+      recBox.innerHTML = `
+        <div class="text-emerald-300 flex items-start gap-1.5">
+          <span class="text-sm">🚀</span>
+          <div>
+            <strong>Estado Óptimo:</strong> Sistema nervioso y columna listos para la sesión. ¡Buen momento para buscar sobrecarga progresiva!
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
+// ============================================================================
+// 17. MCGILL CORE & SPINAL STABILITY TIMER (FEATURE 6)
+// ============================================================================
+
+let mcgillState = {
+  isRunning: false,
+  phase: 'work', // 'work' | 'rest'
+  remaining: 10,
+  cycle: 1,
+  maxCycles: 5,
+  workSec: 10,
+  restSec: 3,
+  intervalId: null
+};
+
+window.openMcGillTimerModal = function () {
+  const modal = document.getElementById('modal-mcgill-timer');
+  if (modal) modal.classList.remove('hidden');
+  updateMcGillUI();
+};
+
+window.closeMcGillTimerModal = function () {
+  const modal = document.getElementById('modal-mcgill-timer');
+  if (modal) modal.classList.add('hidden');
+  if (mcgillState.isRunning) toggleMcGillTimer();
+};
+
+window.setMcGillPreset = function (preset) {
+  if (mcgillState.isRunning) toggleMcGillTimer();
+  ['big3', 'plank', 'deadbug'].forEach(p => {
+    const btn = document.getElementById(`btn-mcgill-${p}`);
+    if (btn) {
+      if (p === preset) {
+        btn.className = 'py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all text-center';
+      } else {
+        btn.className = 'py-2 rounded-xl text-zinc-400 hover:text-zinc-200 transition-all text-center';
+      }
+    }
+  });
+
+  if (preset === 'big3') {
+    mcgillState.workSec = 10;
+    mcgillState.restSec = 3;
+    mcgillState.maxCycles = 5;
+  } else if (preset === 'plank') {
+    mcgillState.workSec = 20;
+    mcgillState.restSec = 10;
+    mcgillState.maxCycles = 4;
+  } else if (preset === 'deadbug') {
+    mcgillState.workSec = 12;
+    mcgillState.restSec = 4;
+    mcgillState.maxCycles = 6;
+  }
+
+  resetMcGillTimer();
+};
+
+window.toggleMcGillTimer = function () {
+  mcgillState.isRunning = !mcgillState.isRunning;
+  const playBtn = document.getElementById('btn-mcgill-play-pause');
+  const label = document.getElementById('mcgill-play-label');
+
+  if (mcgillState.isRunning) {
+    if (label) label.textContent = 'Pausar';
+    if (playBtn) playBtn.className = 'flex-1 py-3 rounded-2xl bg-amber-500 hover:opacity-90 text-zinc-950 text-xs font-black shadow-lg transition-all flex items-center justify-center gap-1.5';
+    playTone(880, 0.15); // Start work tone
+
+    mcgillState.intervalId = setInterval(() => {
+      mcgillState.remaining--;
+      if (mcgillState.remaining <= 0) {
+        if (mcgillState.phase === 'work') {
+          mcgillState.phase = 'rest';
+          mcgillState.remaining = mcgillState.restSec;
+          playTone(440, 0.2); // Rest tone
+          if (navigator.vibrate) navigator.vibrate(100);
+        } else {
+          mcgillState.cycle++;
+          if (mcgillState.cycle > mcgillState.maxCycles) {
+            // Sequence completed
+            toggleMcGillTimer();
+            resetMcGillTimer();
+            playCelebrationFanfare();
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            showToast('🎉 ¡Secuencia Core McGill completada!', 'success');
+            return;
+          } else {
+            mcgillState.phase = 'work';
+            mcgillState.remaining = mcgillState.workSec;
+            playTone(880, 0.18); // Next work tone
+            if (navigator.vibrate) navigator.vibrate(150);
+          }
+        }
+      }
+      updateMcGillUI();
+    }, 1000);
+  } else {
+    clearInterval(mcgillState.intervalId);
+    mcgillState.intervalId = null;
+    if (label) label.textContent = 'Reanudar Secuencia';
+    if (playBtn) playBtn.className = 'flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 text-zinc-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5';
+  }
+};
+
+window.resetMcGillTimer = function () {
+  if (mcgillState.intervalId) {
+    clearInterval(mcgillState.intervalId);
+    mcgillState.intervalId = null;
+  }
+  mcgillState.isRunning = false;
+  mcgillState.phase = 'work';
+  mcgillState.remaining = mcgillState.workSec;
+  mcgillState.cycle = 1;
+
+  const label = document.getElementById('mcgill-play-label');
+  const playBtn = document.getElementById('btn-mcgill-play-pause');
+  if (label) label.textContent = 'Iniciar Secuencia';
+  if (playBtn) playBtn.className = 'flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 text-zinc-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5';
+
+  updateMcGillUI();
+};
+
+function updateMcGillUI() {
+  const badge = document.getElementById('mcgill-phase-badge');
+  const num = document.getElementById('mcgill-countdown-number');
+  const cycleEl = document.getElementById('mcgill-cycle-label');
+
+  if (num) num.textContent = mcgillState.remaining;
+  if (cycleEl) cycleEl.textContent = `Repetición ${mcgillState.cycle} de ${mcgillState.maxCycles}`;
+
+  if (badge) {
+    if (mcgillState.phase === 'work') {
+      badge.textContent = 'TRABAJO (CONTRACCIÓN)';
+      badge.className = 'px-3 py-1 rounded-full text-xs font-extrabold tracking-wider uppercase mb-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    } else {
+      badge.textContent = 'PAUSA (DESCOMPRESIÓN)';
+      badge.className = 'px-3 py-1 rounded-full text-xs font-extrabold tracking-wider uppercase mb-2 bg-blue-500/20 text-blue-300 border border-blue-500/30';
+    }
+  }
+}
+
+// ============================================================================
+// 18. WEEKLY PERFORMANCE SUMMARY & WHATSAPP EXPORT (FEATURE 7)
+// ============================================================================
+
+window.openWeeklySummaryModal = function () {
+  const modal = document.getElementById('modal-weekly-summary');
+  if (!modal) return;
+
+  const week = state.selectedWeek;
+  const weekExercises = state.workoutData.filter(e => e.semana === week);
+
+  let totalVolumeKg = 0;
+  let totalCompletedSets = 0;
+  let totalPRs = 0;
+  let lumbarWarnings = 0;
+
+  weekExercises.forEach(ex => {
+    for (let s = 1; s <= ex.series; s++) {
+      const log = state.workoutLogs[`${ex.id}_s${s}`];
+      if (log && log.completed) {
+        totalCompletedSets++;
+        const w = parseFloat(log.weight) || 0;
+        const r = parseFloat(log.reps) || 0;
+        totalVolumeKg += w * r;
+
+        if (w > 0 && checkIsPersonalRecord(ex, w, r)) {
+          totalPRs++;
+        }
+      }
+      if (log && log.molestia_dolor) lumbarWarnings++;
+    }
+  });
+
+  // Nutrition adherence for selected week
+  const weekMeals = state.nutritionData.filter(m => m.semana === week);
+  let completedMeals = 0;
+  weekMeals.forEach(m => {
+    if (state.nutritionLogs[m.id]) completedMeals++;
+  });
+  const nutritionPct = weekMeals.length > 0 ? Math.round((completedMeals / weekMeals.length) * 100) : 0;
+
+  // Update UI Stats
+  const volEl = document.getElementById('summary-volume-stat');
+  const setsEl = document.getElementById('summary-sets-stat');
+  const prsEl = document.getElementById('summary-prs-stat');
+  const nutriEl = document.getElementById('summary-nutrition-stat');
+
+  if (volEl) volEl.textContent = `${Math.round(totalVolumeKg).toLocaleString('es-ES')} kg`;
+  if (setsEl) setsEl.textContent = `${totalCompletedSets} series`;
+  if (prsEl) prsEl.textContent = `${totalPRs} batidos`;
+  if (nutriEl) nutriEl.textContent = `${nutritionPct}% (${completedMeals}/${weekMeals.length})`;
+
+  // Generate WhatsApp message
+  const spineText = lumbarWarnings === 0 ? '🟢 Óptima (Sin sobrecarga lumbar)' : `🟡 ${lumbarWarnings} avisos controlados`;
+  const whatsappMsg = 
+`🏋️‍♂️ *FITPANTRY REPORT - SEMANA ${week}* 🚀
+────────────────────────
+💪 *Volumen Total:* ${Math.round(totalVolumeKg).toLocaleString('es-ES')} kg
+✅ *Series Completadas:* ${totalCompletedSets} series
+🏆 *Nuevos Récords (PR):* ${totalPRs} récords
+🥗 *Adherencia Nutrición:* ${nutritionPct}% (${completedMeals}/${weekMeals.length} comidas)
+🛡️ *Salud Raquídea:* ${spineText}
+────────────────────────
+🔥 _Constancia, disciplina y salud raquídea._`;
+
+  const textarea = document.getElementById('whatsapp-summary-textarea');
+  if (textarea) textarea.value = whatsappMsg;
+
+  modal.classList.remove('hidden');
+};
+
+window.closeWeeklySummaryModal = function () {
+  const modal = document.getElementById('modal-weekly-summary');
+  if (modal) modal.classList.add('hidden');
+};
+
+window.copyWeeklySummaryWhatsApp = function () {
+  const textarea = document.getElementById('whatsapp-summary-textarea');
+  if (!textarea) return;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(textarea.value).then(() => {
+      playTone(800, 0.15);
+      showToast('📋 ¡Resumen semanal copiado para WhatsApp!', 'success');
+    }).catch(() => {
+      textarea.select();
+      document.execCommand('copy');
+      showToast('📋 ¡Copiado al portapapeles!', 'success');
+    });
+  } else {
+    textarea.select();
+    document.execCommand('copy');
+    showToast('📋 ¡Copiado al portapapeles!', 'success');
+  }
+};
 
 // Bootstrap
 document.addEventListener('DOMContentLoaded', initApp);

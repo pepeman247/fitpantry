@@ -177,6 +177,14 @@
         </button>
       </div>
 
+      <!-- Quick Auto-Sync Menu to Aldi Button (Feature 1) -->
+      <div class="flex items-center gap-2">
+        <button onclick="generateShoppingListFromWeekMenu()" class="flex-1 py-2 px-3 bg-zinc-900/90 hover:bg-emerald-500/15 border border-white/[0.08] hover:border-emerald-500/30 text-emerald-300 rounded-2xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span id="label-generate-week-list">⚡ Cargar Ingredientes del Menú de la Semana</span>
+        </button>
+      </div>
+
       <!-- Search & Bulk Action -->
       <div class="flex items-center gap-2">
         <div class="relative flex-1">
@@ -203,6 +211,39 @@
       <!-- Gym vs Casa Toggle Switch (Apple Segmented Style) -->
       <div id="workout-location-toggle" class="p-1 bg-zinc-900/90 border border-white/[0.07] rounded-2xl flex items-center gap-1 shadow-inner"></div>
 
+      <!-- Daily Pre-Workout Readiness & Spine Check-in (Feature 5) -->
+      <div id="card-daily-checkin" class="glass-panel p-3.5 rounded-3xl border border-white/[0.07] space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs font-bold">⚡</span>
+            <span class="text-xs font-extrabold text-white tracking-tight">Check-in Pre-Entreno</span>
+          </div>
+          <span id="checkin-date-label" class="text-[10px] font-mono text-zinc-400 font-semibold">Hoy</span>
+        </div>
+        
+        <div class="space-y-1">
+          <span class="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Energía / Sueño:</span>
+          <div class="grid grid-cols-3 gap-1 text-[11px] font-bold">
+            <button type="button" onclick="setDailyCheckin('energy', 'high')" id="btn-checkin-energy-high" class="py-1.5 rounded-xl bg-zinc-900 text-zinc-300 border border-white/[0.05] transition-all">⚡ A tope</button>
+            <button type="button" onclick="setDailyCheckin('energy', 'normal')" id="btn-checkin-energy-normal" class="py-1.5 rounded-xl bg-zinc-900 text-zinc-300 border border-white/[0.05] transition-all">😐 Normal</button>
+            <button type="button" onclick="setDailyCheckin('energy', 'low')" id="btn-checkin-energy-low" class="py-1.5 rounded-xl bg-zinc-900 text-zinc-300 border border-white/[0.05] transition-all">😴 Fatiga</button>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <span class="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Columna / Articulaciones:</span>
+          <div class="grid grid-cols-3 gap-1 text-[11px] font-bold">
+            <button type="button" onclick="setDailyCheckin('spine', 'good')" id="btn-checkin-spine-good" class="py-1.5 rounded-xl bg-zinc-900 text-zinc-300 border border-white/[0.05] transition-all">🟢 Libre</button>
+            <button type="button" onclick="setDailyCheckin('spine', 'tight')" id="btn-checkin-spine-tight" class="py-1.5 rounded-xl bg-zinc-900 text-zinc-300 border border-white/[0.05] transition-all">🟡 Tensión</button>
+            <button type="button" onclick="setDailyCheckin('spine', 'pain')" id="btn-checkin-spine-pain" class="py-1.5 rounded-xl bg-zinc-900 text-zinc-300 border border-white/[0.05] transition-all">🔴 Molestia</button>
+          </div>
+        </div>
+
+        <div id="checkin-recommendation-box" class="p-2.5 rounded-2xl bg-zinc-900/70 border border-white/[0.04] text-[11px] text-zinc-300 leading-snug">
+          Selecciona tu energía y estado de columna para recibir pauta de autorregulación.
+        </div>
+      </div>
+
       <!-- Week Selector -->
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Mesociclo</span>
@@ -215,8 +256,8 @@
       <div id="workout-days-selector" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"></div>
 
       <!-- Progress Card -->
-      <div class="glass-panel p-3.5 rounded-3xl border border-white/[0.07] shadow-md">
-        <div class="flex items-center justify-between mb-2">
+      <div class="glass-panel p-3.5 rounded-3xl border border-white/[0.07] shadow-md space-y-2.5">
+        <div class="flex items-center justify-between">
           <div>
             <span class="text-[10px] uppercase font-bold text-emerald-300/80 tracking-wider">Progreso de la sesión</span>
             <p id="workout-progress-summary" class="text-xs font-semibold text-zinc-200">0 de 0 series completadas</p>
@@ -225,6 +266,18 @@
         </div>
         <div class="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
           <div id="workout-progress-bar" class="h-full bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500 transition-all duration-300 w-0"></div>
+        </div>
+
+        <!-- Quick Access Feature Buttons (Features 6 & 7) -->
+        <div class="flex items-center gap-2 pt-1 border-t border-white/[0.05]">
+          <button onclick="openWeeklySummaryModal()" class="flex-1 py-2 px-2.5 bg-zinc-900/90 hover:bg-zinc-800 text-emerald-300 border border-emerald-500/25 rounded-2xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+            <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+            <span>Resumen Semanal</span>
+          </button>
+          <button onclick="openMcGillTimerModal()" class="flex-1 py-2 px-2.5 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-white/[0.08] rounded-2xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+            <i data-lucide="timer" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Core McGill</span>
+          </button>
         </div>
       </div>
 
@@ -637,6 +690,200 @@
         <button type="button" onclick="applyPlateCalculatorWeight()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 text-zinc-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4 stroke-[3px]"></i>
           <span>Aplicar Peso</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL SUSTITUCIÓN DE ALIMENTOS (100% SIN GLUTEN) (Feature 2) -->
+  <!-- ========================================== -->
+  <div id="modal-food-swap" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 hidden animate-slide-up overflow-y-auto">
+    <div class="w-full max-w-sm glass-panel p-6 rounded-3xl border border-white/[0.1] shadow-2xl flex flex-col gap-4 relative">
+      <button onclick="closeFoodSwapModal()" class="absolute top-4 right-4 p-2 rounded-2xl bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/[0.08] transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-400 to-[#30d158] flex items-center justify-center shadow-lg shadow-emerald-500/20 text-zinc-950 font-black text-lg">
+          🔄
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-white tracking-tight">Cambiar Alimento</h3>
+          <p class="text-[11px] text-zinc-400">Equivalencias 100% Sin Gluten y macros idénticos</p>
+        </div>
+      </div>
+
+      <!-- Current Meal Info -->
+      <div class="p-3 rounded-2xl bg-zinc-900/80 border border-white/[0.06] space-y-1">
+        <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Plato Original:</span>
+        <h4 id="swap-current-meal-name" class="text-xs font-bold text-white leading-snug">Cargando...</h4>
+        <p id="swap-current-ingredients" class="text-[11px] font-mono text-zinc-300">Cargando...</p>
+      </div>
+
+      <!-- Alternatives List -->
+      <div class="space-y-1.5">
+        <span class="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Alternativas Nutricionales Equivalentes:</span>
+        <div id="food-swap-alternatives-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 pt-1">
+        <button type="button" onclick="resetFoodSwapCurrentMeal()" class="py-2.5 px-3 rounded-2xl bg-zinc-900 text-zinc-400 hover:text-rose-400 border border-white/[0.08] text-xs font-semibold transition-all">
+          Restablecer Original
+        </button>
+        <button type="button" onclick="closeFoodSwapModal()" class="flex-1 py-2.5 rounded-2xl bg-zinc-900 text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-bold transition-all">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL EJERCICIOS ALTERNATIVOS (MÁQUINA OCUPADA) (Feature 3) -->
+  <!-- ========================================== -->
+  <div id="modal-exercise-swap" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 hidden animate-slide-up overflow-y-auto">
+    <div class="w-full max-w-sm glass-panel p-6 rounded-3xl border border-white/[0.1] shadow-2xl flex flex-col gap-4 relative">
+      <button onclick="closeExerciseSwapModal()" class="absolute top-4 right-4 p-2 rounded-2xl bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/[0.08] transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-400 to-[#30d158] flex items-center justify-center shadow-lg shadow-emerald-500/20 text-zinc-950 font-black text-lg">
+          ⇄
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-white tracking-tight">Ejercicios Alternativos</h3>
+          <p class="text-[11px] text-zinc-400">Variantes biomecánicas por máquina ocupada o molestia</p>
+        </div>
+      </div>
+
+      <!-- Current Exercise Info -->
+      <div class="p-3 rounded-2xl bg-zinc-900/80 border border-white/[0.06] space-y-0.5">
+        <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Ejercicio Programado:</span>
+        <h4 id="swap-current-exercise-name" class="text-xs font-bold text-white">Cargando...</h4>
+      </div>
+
+      <!-- Alternatives List -->
+      <div class="space-y-1.5">
+        <span class="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Opciones Equivalentes Disponibles:</span>
+        <div id="exercise-swap-alternatives-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 pt-1">
+        <button type="button" onclick="resetCurrentExerciseSwap()" class="py-2.5 px-3 rounded-2xl bg-zinc-900 text-zinc-400 hover:text-rose-400 border border-white/[0.08] text-xs font-semibold transition-all">
+          Restablecer Original
+        </button>
+        <button type="button" onclick="closeExerciseSwapModal()" class="flex-1 py-2.5 rounded-2xl bg-zinc-900 text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-bold transition-all">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL TEMPORIZADOR CORE MCGILL (Feature 6) -->
+  <!-- ========================================== -->
+  <div id="modal-mcgill-timer" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 hidden animate-slide-up overflow-y-auto">
+    <div class="w-full max-w-sm glass-panel p-6 rounded-3xl border border-white/[0.1] shadow-2xl flex flex-col gap-4 relative">
+      <button onclick="closeMcGillTimerModal()" class="absolute top-4 right-4 p-2 rounded-2xl bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/[0.08] transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-400 to-[#30d158] flex items-center justify-center shadow-lg shadow-emerald-500/20 text-zinc-950 font-black text-lg">
+          🧘
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-white tracking-tight">Temporizador Core McGill</h3>
+          <p class="text-[11px] text-zinc-400">Estabilidad raquídea y brace abdominal sin sobrecarga</p>
+        </div>
+      </div>
+
+      <!-- Mode Selector -->
+      <div class="grid grid-cols-3 gap-1 text-[10px] font-bold p-1 bg-zinc-900/80 rounded-2xl border border-white/[0.06]">
+        <button type="button" onclick="setMcGillPreset('big3')" id="btn-mcgill-big3" class="py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all text-center">McGill 10s/3s</button>
+        <button type="button" onclick="setMcGillPreset('plank')" id="btn-mcgill-plank" class="py-2 rounded-xl text-zinc-400 hover:text-zinc-200 transition-all text-center">Plancha 20s</button>
+        <button type="button" onclick="setMcGillPreset('deadbug')" id="btn-mcgill-deadbug" class="py-2 rounded-xl text-zinc-400 hover:text-zinc-200 transition-all text-center">Bird-Dog 12s</button>
+      </div>
+
+      <!-- Main Visual Interval Ring & Timer Display -->
+      <div class="flex flex-col items-center justify-center py-4 bg-zinc-950/60 rounded-3xl border border-white/[0.05] relative overflow-hidden">
+        <div id="mcgill-phase-badge" class="px-3 py-1 rounded-full text-xs font-extrabold tracking-wider uppercase mb-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          TRABAJO (CONTRACCIÓN)
+        </div>
+        <div id="mcgill-countdown-number" class="text-5xl font-black font-mono text-white tracking-tighter my-1">
+          10
+        </div>
+        <div id="mcgill-cycle-label" class="text-xs font-semibold text-zinc-400">
+          Repetición 1 de 5
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex items-center gap-2 pt-1">
+        <button type="button" onclick="resetMcGillTimer()" class="py-3 px-3.5 rounded-2xl bg-zinc-900 text-zinc-400 hover:text-white border border-white/[0.08] text-xs font-bold transition-all">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+        </button>
+        <button type="button" id="btn-mcgill-play-pause" onclick="toggleMcGillTimer()" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 text-zinc-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5">
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+          <span id="mcgill-play-label">Iniciar Secuencia</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL RESUMEN SEMANAL / WHATSAPP (Feature 7) -->
+  <!-- ========================================== -->
+  <div id="modal-weekly-summary" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 hidden animate-slide-up overflow-y-auto">
+    <div class="w-full max-w-sm glass-panel p-6 rounded-3xl border border-white/[0.1] shadow-2xl flex flex-col gap-4 relative">
+      <button onclick="closeWeeklySummaryModal()" class="absolute top-4 right-4 p-2 rounded-2xl bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/[0.08] transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-400 to-[#30d158] flex items-center justify-center shadow-lg shadow-emerald-500/20 text-zinc-950 font-black text-lg">
+          📤
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-white tracking-tight">Resumen Semanal</h3>
+          <p class="text-[11px] text-zinc-400">Telemetría de rendimiento lista para compartir</p>
+        </div>
+      </div>
+
+      <!-- Metrics Grid -->
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+          <span class="text-[10px] text-zinc-400 uppercase font-bold block">Volumen Total</span>
+          <span id="summary-volume-stat" class="text-base font-black font-mono text-emerald-300">0 kg</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+          <span class="text-[10px] text-zinc-400 uppercase font-bold block">Series Hechas</span>
+          <span id="summary-sets-stat" class="text-base font-black font-mono text-white">0 series</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+          <span class="text-[10px] text-zinc-400 uppercase font-bold block">Récords 🏆 PR</span>
+          <span id="summary-prs-stat" class="text-base font-black font-mono text-amber-300">0 batidos</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04]">
+          <span class="text-[10px] text-zinc-400 uppercase font-bold block">Nutrición</span>
+          <span id="summary-nutrition-stat" class="text-base font-black font-mono text-blue-300">0%</span>
+        </div>
+      </div>
+
+      <!-- Formatted WhatsApp Message Preview -->
+      <div class="space-y-1">
+        <span class="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Texto listo para WhatsApp:</span>
+        <textarea id="whatsapp-summary-textarea" readonly rows="7" class="w-full bg-zinc-950/80 border border-white/[0.08] rounded-2xl p-3 text-xs text-zinc-200 font-mono focus:outline-none resize-none leading-relaxed"></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 pt-1">
+        <button type="button" onclick="copyWeeklySummaryWhatsApp()" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 text-zinc-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
+          <i data-lucide="clipboard" class="w-4 h-4 stroke-[3px]"></i>
+          <span>Copiar para WhatsApp</span>
         </button>
       </div>
     </div>
