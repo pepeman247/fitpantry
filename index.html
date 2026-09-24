@@ -549,6 +549,140 @@
     </div>
   </div>
 
+  <!-- ========================================== -->
+  <!-- MODAL CALCULADORA VISUAL DE DISCOS (APPLE HIG) -->
+  <!-- ========================================== -->
+  <div id="modal-plate-calculator" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 hidden animate-slide-up overflow-y-auto">
+    <div class="w-full max-w-sm glass-panel p-6 rounded-3xl border border-white/[0.1] shadow-2xl flex flex-col gap-4 relative">
+      <!-- Close Button -->
+      <button onclick="closePlateCalculatorModal()" class="absolute top-4 right-4 p-2 rounded-2xl bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/[0.08] transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Header -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-400 to-[#30d158] flex items-center justify-center shadow-lg shadow-emerald-500/20 text-zinc-950 font-black text-lg">
+          🏋️
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-white tracking-tight">Cálculo de Discos</h3>
+          <p class="text-[11px] text-zinc-400">Distribución exacta por lado en barra</p>
+        </div>
+      </div>
+
+      <!-- Target Weight Selector -->
+      <div class="space-y-1.5">
+        <label class="block text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Peso Objetivo Total (kg)</label>
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="adjustPlateCalcWeight(-5)" class="px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/[0.08] text-xs font-bold transition-all">-5</button>
+          <button type="button" onclick="adjustPlateCalcWeight(-2.5)" class="px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/[0.08] text-xs font-bold transition-all">-2.5</button>
+          <input type="number" id="plate-calc-target-weight" step="0.5" value="60" oninput="calculatePlatesUI()" class="flex-1 bg-zinc-900/90 border border-white/[0.08] rounded-xl py-2 text-center text-lg font-black text-emerald-300 font-mono focus:border-emerald-400 focus:outline-none" />
+          <button type="button" onclick="adjustPlateCalcWeight(2.5)" class="px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-emerald-400 border border-white/[0.08] text-xs font-bold transition-all">+2.5</button>
+          <button type="button" onclick="adjustPlateCalcWeight(5)" class="px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-emerald-400 border border-white/[0.08] text-xs font-bold transition-all">+5</button>
+        </div>
+      </div>
+
+      <!-- Bar Weight Picker -->
+      <div class="space-y-1.5">
+        <label class="block text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Tipo de Barra</label>
+        <div class="grid grid-cols-4 gap-1 text-[11px] font-bold">
+          <button type="button" onclick="setPlateCalcBar(20)" id="plate-bar-20" class="py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all text-center">
+            20 kg
+          </button>
+          <button type="button" onclick="setPlateCalcBar(15)" id="plate-bar-15" class="py-1.5 rounded-xl bg-zinc-900/80 text-zinc-400 hover:text-zinc-200 border border-white/[0.05] transition-all text-center">
+            15 kg
+          </button>
+          <button type="button" onclick="setPlateCalcBar(25)" id="plate-bar-25" class="py-1.5 rounded-xl bg-zinc-900/80 text-zinc-400 hover:text-zinc-200 border border-white/[0.05] transition-all text-center">
+            25 kg
+          </button>
+          <button type="button" onclick="setPlateCalcBar(0)" id="plate-bar-0" class="py-1.5 rounded-xl bg-zinc-900/80 text-zinc-400 hover:text-zinc-200 border border-white/[0.05] transition-all text-center">
+            0 kg
+          </button>
+        </div>
+      </div>
+
+      <!-- Result Card -->
+      <div class="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.08] flex items-center justify-between">
+        <div>
+          <span class="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Por cada manga (lado)</span>
+          <span id="plate-calc-per-side" class="text-xl font-black text-white font-mono">20.0 kg</span>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Barra</span>
+          <span id="plate-calc-bar-label" class="text-xs font-semibold text-emerald-400">Olímpica (20 kg)</span>
+        </div>
+      </div>
+
+      <!-- Visual Barbell Sleeve Representation -->
+      <div class="space-y-1.5">
+        <label class="block text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Montaje visual de discos</label>
+        <div class="h-16 bg-[#0a0e0c] rounded-2xl border border-white/[0.08] flex items-center px-4 overflow-x-auto relative">
+          <!-- Barbell shaft & collar -->
+          <div class="h-3 w-8 bg-zinc-600 rounded-l-sm shrink-0"></div>
+          <div class="h-8 w-3 bg-zinc-400 border-y border-zinc-200 shrink-0 rounded-sm"></div>
+          <div class="h-4 flex-1 min-w-[120px] bg-zinc-700/80 flex items-center gap-1 pl-1" id="plate-visual-sleeve">
+            <!-- Discs rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Discs List Breakdown -->
+      <div id="plate-discs-list" class="space-y-1 text-xs max-h-28 overflow-y-auto pr-1"></div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 pt-1">
+        <button type="button" onclick="closePlateCalculatorModal()" class="flex-1 py-2.5 rounded-2xl bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-white/[0.08] text-xs font-semibold transition-all">
+          Cerrar
+        </button>
+        <button type="button" onclick="applyPlateCalculatorWeight()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-[#30d158] hover:opacity-90 text-zinc-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4 stroke-[3px]"></i>
+          <span>Aplicar Peso</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- FLOATING REST TIMER HUD (APPLE FITNESS)   -->
+  <!-- ========================================== -->
+  <div id="floating-rest-timer-hud" class="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40 hidden transform transition-all duration-300 pointer-events-auto">
+    <div class="glass-panel p-3 rounded-2xl border border-emerald-500/35 shadow-[0_12px_40px_rgba(0,0,0,0.85)] bg-[#0d1410]/95 backdrop-blur-2xl flex items-center justify-between gap-2.5 relative overflow-hidden">
+      <!-- Animated Progress Fill -->
+      <div id="hud-timer-progress-fill" class="absolute left-0 top-0 bottom-0 bg-emerald-500/15 pointer-events-none transition-all duration-300 w-0"></div>
+
+      <div class="flex items-center gap-2.5 min-w-0 z-10 flex-1">
+        <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-sm animate-pulse">
+          <i data-lucide="timer" class="w-4 h-4"></i>
+        </div>
+        <div class="truncate">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[9px] uppercase tracking-wider font-extrabold text-emerald-400">Descanso</span>
+            <span id="hud-timer-target-name" class="text-[11px] font-bold text-white truncate max-w-[130px]">Serie</span>
+          </div>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span id="hud-timer-countdown" class="font-mono text-base font-black text-emerald-300 tracking-wider">01:30</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Steppers & Toggle -->
+      <div class="flex items-center gap-1 z-10 shrink-0">
+        <button type="button" onclick="adjustFloatingTimer(-15)" class="px-2 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 active:scale-95 rounded-xl border border-white/[0.08] text-[10px] font-bold transition-all" title="Restar 15s">
+          -15s
+        </button>
+        <button type="button" onclick="adjustFloatingTimer(30)" class="px-2 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-emerald-400 active:scale-95 rounded-xl border border-white/[0.08] text-[10px] font-bold transition-all" title="Sumar 30s">
+          +30s
+        </button>
+        <button type="button" id="hud-timer-toggle-btn" onclick="toggleFloatingTimer()" class="w-8 h-8 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 active:scale-95 rounded-xl border border-emerald-500/40 flex items-center justify-center transition-all shadow-sm" title="Pausar / Reanudar">
+          <i data-lucide="pause" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" onclick="dismissFloatingTimer()" class="p-1.5 text-zinc-500 hover:text-zinc-200 active:scale-95 rounded-xl transition-all" title="Cerrar temporizador">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL FOCO: MANOS SUDOROSAS (APPLE WATCH ULTRA LUXURY WORKOUT UI) -->
   <div id="modal-focus-mode" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-0 sm:p-4 hidden animate-slide-up overflow-y-auto"></div>
 

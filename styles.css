@@ -143,3 +143,27 @@
 .pulse-action {
   animation: pulse-green 2.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
+
+/* Personal Record Gold Pulse */
+@keyframes pr-gold-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.35);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.7);
+    transform: scale(1.05);
+  }
+}
+
+.badge-pr {
+  animation: pr-gold-pulse 2s infinite ease-in-out;
+}
+
+/* Shopping Item Strikethrough */
+.shopping-checked {
+  opacity: 0.55;
+  text-decoration: line-through;
+  filter: grayscale(0.5);
+}
+
