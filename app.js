@@ -1837,6 +1837,11 @@ function registerPWA() {
 let currentAuthMode = 'login'; // 'login' | 'register'
 
 window.openAuthModal = function (mode = 'login') {
+  if (!window.FirebaseAuth || !window.FirebaseAuth.isConfigured()) {
+    showToast('Vincula tu proyecto de Firebase para iniciar sesión o registrarte', 'info');
+    window.openPasteFirebaseModal();
+    return;
+  }
   window.setAuthMode(mode);
   const modal = document.getElementById('modal-auth');
   if (modal) modal.classList.remove('hidden');
@@ -1937,7 +1942,7 @@ window.logoutUser = async function () {
   }
 };
 
-window.saveFirebaseSettingsFromUI = function () {
+window.saveFirebaseSettingsFromUI = async function () {
   const apiKey = (document.getElementById('firebase-input-apikey')?.value || '').trim();
   const authDomain = (document.getElementById('firebase-input-authdomain')?.value || '').trim();
   const projectId = (document.getElementById('firebase-input-projectid')?.value || '').trim();
@@ -1945,10 +1950,10 @@ window.saveFirebaseSettingsFromUI = function () {
 
   if (!apiKey || !projectId) {
     showToast('Por favor introduce al menos la API Key y el Project ID de Firebase', 'error');
-    return;
+    return false;
   }
 
-  const ok = window.FirebaseAuth.saveFirebaseConfig({
+  const ok = await window.FirebaseAuth.saveFirebaseConfig({
     apiKey,
     authDomain,
     projectId,
@@ -1957,42 +1962,132 @@ window.saveFirebaseSettingsFromUI = function () {
 
   if (ok) {
     showToast('Credenciales de Firebase guardadas en el dispositivo', 'success');
-    window.SyncService.drainQueue();
+    if (window.SyncService) window.SyncService.drainQueue();
+    return true;
   } else {
     showToast('Error al guardar credenciales', 'error');
+    return false;
   }
 };
 
-window.promptPasteFirebaseConfig = function () {
-  const raw = prompt('Pega el objeto de configuración copiado de Firebase Console (const firebaseConfig = { ... }):');
-  if (!raw) return;
+window.openPasteFirebaseModal = function () {
+  const modal = document.getElementById('modal-paste-firebase');
+  if (modal) {
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+    setTimeout(() => {
+      const textarea = document.getElementById('firebase-paste-textarea');
+      if (textarea) textarea.focus();
+    }, 120);
+  }
+};
+
+window.closePasteFirebaseModal = function () {
+  const modal = document.getElementById('modal-paste-firebase');
+  if (modal) modal.classList.add('hidden');
+};
+
+window.promptPasteFirebaseConfig = async function () {
+  // Intentar leer directamente del portapapeles si el navegador lo permite
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (clipText && (clipText.includes('apiKey') || clipText.includes('projectId'))) {
+        const textarea = document.getElementById('firebase-paste-textarea');
+        if (textarea) textarea.value = clipText;
+        await window.parseAndApplyFirebaseConfig(clipText);
+        return;
+      }
+    } catch (err) {
+      // Si el navegador bloquea la lectura automática o requiere permiso, abrir el modal
+    }
+  }
+  window.openPasteFirebaseModal();
+};
+
+window.pasteFromClipboardDirectly = async function () {
+  try {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const textarea = document.getElementById('firebase-paste-textarea');
+        if (textarea) textarea.value = text;
+        showToast('Texto pegado del portapapeles', 'info');
+        return;
+      }
+    }
+    showToast('Haz clic dentro del cuadro y pulsa Ctrl+V o Pegar', 'info');
+  } catch (err) {
+    showToast('Haz clic dentro del cuadro y pulsa Ctrl+V o Pegar', 'info');
+  }
+};
+
+window.applyPastedFirebaseConfig = function () {
+  const textarea = document.getElementById('firebase-paste-textarea');
+  const raw = textarea ? textarea.value.trim() : '';
+  if (!raw) {
+    showToast('El cuadro de texto está vacío. Pega la configuración de Firebase.', 'error');
+    return;
+  }
+  window.parseAndApplyFirebaseConfig(raw);
+};
+
+window.parseAndApplyFirebaseConfig = async function (raw) {
+  if (!raw || typeof raw !== 'string') {
+    showToast('El texto proporcionado está vacío', 'error');
+    return;
+  }
 
   try {
-    // Extraer valores mediante expresiones regulares o JSON
-    const apiKeyMatch = raw.match(/apiKey["']?\s*:\s*["']([^"']+)["']/);
-    const authDomainMatch = raw.match(/authDomain["']?\s*:\s*["']([^"']+)["']/);
-    const projectIdMatch = raw.match(/projectId["']?\s*:\s*["']([^"']+)["']/);
-    const appIdMatch = raw.match(/appId["']?\s*:\s*["']([^"']+)["']/);
+    // Extraer valores mediante expresiones regulares flexibles (comillas simples, dobles o sin comillas)
+    const apiKeyMatch = raw.match(/apiKey["']?\s*[:=]\s*["']?([^"',\s\r\n}]+)["']?/i);
+    const authDomainMatch = raw.match(/authDomain["']?\s*[:=]\s*["']?([^"',\s\r\n}]+)["']?/i);
+    const projectIdMatch = raw.match(/projectId["']?\s*[:=]\s*["']?([^"',\s\r\n}]+)["']?/i);
+    const appIdMatch = raw.match(/appId["']?\s*[:=]\s*["']?([^"',\s\r\n}]+)["']?/i);
 
     const config = {
-      apiKey: apiKeyMatch ? apiKeyMatch[1] : '',
-      authDomain: authDomainMatch ? authDomainMatch[1] : '',
-      projectId: projectIdMatch ? projectIdMatch[1] : '',
-      appId: appIdMatch ? appIdMatch[1] : ''
+      apiKey: apiKeyMatch ? apiKeyMatch[1].trim() : '',
+      authDomain: authDomainMatch ? authDomainMatch[1].trim() : '',
+      projectId: projectIdMatch ? projectIdMatch[1].trim() : '',
+      appId: appIdMatch ? appIdMatch[1].trim() : ''
     };
 
-    if (config.apiKey) document.getElementById('firebase-input-apikey').value = config.apiKey;
-    if (config.authDomain) document.getElementById('firebase-input-authdomain').value = config.authDomain;
-    if (config.projectId) document.getElementById('firebase-input-projectid').value = config.projectId;
-    if (config.appId) document.getElementById('firebase-input-appid').value = config.appId;
+    if (!config.apiKey && !config.projectId) {
+      showToast('No se encontraron claves válidas (apiKey o projectId)', 'error');
+      return;
+    }
 
-    if (config.apiKey && config.projectId) {
-      window.saveFirebaseSettingsFromUI();
-    } else {
-      showToast('Campos rellenados. Revisa y pulsa "Guardar Conexión"', 'info');
+    if (config.apiKey) {
+      const el = document.getElementById('firebase-input-apikey');
+      if (el) el.value = config.apiKey;
+    }
+    if (config.authDomain) {
+      const el = document.getElementById('firebase-input-authdomain');
+      if (el) el.value = config.authDomain;
+    }
+    if (config.projectId) {
+      const el = document.getElementById('firebase-input-projectid');
+      if (el) el.value = config.projectId;
+    }
+    if (config.appId) {
+      const el = document.getElementById('firebase-input-appid');
+      if (el) el.value = config.appId;
+    }
+
+    window.closePasteFirebaseModal();
+    const saved = await window.saveFirebaseSettingsFromUI();
+    if (saved) {
+      showToast(`Firebase vinculado: ${config.projectId}`, 'success');
+      setTimeout(async () => {
+        const user = window.FirebaseAuth ? await window.FirebaseAuth.getUser() : null;
+        if (!user) {
+          window.openAuthModal('login');
+        }
+      }, 500);
     }
   } catch (e) {
-    showToast('No se pudo analizar el texto introducido', 'error');
+    console.error('Error procesando configuración:', e);
+    showToast('Error al analizar la configuración', 'error');
   }
 };
 
