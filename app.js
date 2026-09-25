@@ -5,10 +5,58 @@
  */
 
 // ============================================================================
-// 1. STATE STORE & PERSISTENCE
+// 0. GLOBAL ERROR BOUNDARY & SAFE MODE RESILIENCE
+// ============================================================================
+
+window.addEventListener('error', (event) => {
+  console.error('[GlobalErrorBoundary] Error no capturado:', event.error || event.message);
+  displaySafeRecoveryBanner(event.message || 'Error inesperado de ejecución');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[GlobalErrorBoundary] Promesa rechazada no controlada:', event.reason);
+  displaySafeRecoveryBanner(event.reason?.message || 'Error en operación asíncrona');
+});
+
+function displaySafeRecoveryBanner(errorMsg) {
+  if (document.getElementById('safe-recovery-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'safe-recovery-banner';
+  banner.className = 'fixed bottom-20 left-4 right-4 md:left-auto md:right-6 md:w-96 z-[9999] bg-zinc-950/95 border border-amber-500/40 backdrop-blur-xl p-4 rounded-2xl shadow-2xl text-white text-xs space-y-2.5 animate-in slide-in-from-bottom-5';
+  banner.innerHTML = `
+    <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+      <span class="text-base">🛡️</span> Modo Seguro / Recuperación
+    </div>
+    <p class="text-zinc-300 leading-relaxed">
+      Se detectó una excepción inesperada. Tus datos y marcas locales están protegidos.
+    </p>
+    <div class="flex items-center gap-2 pt-1">
+      <button onclick="window.location.reload()" class="flex-1 py-1.5 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold rounded-lg transition border border-white/10">
+        Reintentar
+      </button>
+      <button onclick="window.activateSafeMode()" class="flex-1 py-1.5 px-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg transition shadow-md">
+        Modo Seguro
+      </button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+}
+
+window.activateSafeMode = function () {
+  document.querySelectorAll('.modal, [id^="modal-"]').forEach(m => m.classList.add('hidden'));
+  if (typeof switchTab === 'function') switchTab('entrenar');
+  const banner = document.getElementById('safe-recovery-banner');
+  if (banner) banner.remove();
+  showToast('🛡️ Modo Seguro activado. Interfaz restablecida.', 'success');
+};
+
+// ============================================================================
+// 1. STATE STORE & PERSISTENCE (SAFESTORAGE ENGINE)
 // ============================================================================
 
 const STORAGE_KEY = 'fitpantry_state_v2';
+const STORAGE_BACKUP_KEY = 'fitpantry_state_v2_backup';
 
 const state = {
   activePlan: 'plan3dias',      // 'plan3dias' | 'plan5dias'
@@ -82,39 +130,78 @@ function saveStateToStorage() {
       dailyCheckin: state.dailyCheckin,
       nutritionSwaps: state.nutritionSwaps,
       exerciseSwaps: state.exerciseSwaps,
-      settings: state.settings
+      settings: state.settings,
+      savedAt: Date.now()
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    const serialized = JSON.stringify(payload);
+
+    // Conservar último estado válido conocido antes de sobrescribir
+    const currentStored = localStorage.getItem(STORAGE_KEY);
+    if (currentStored && currentStored.length > 50) {
+      localStorage.setItem(STORAGE_BACKUP_KEY, currentStored);
+    }
+
+    localStorage.setItem(STORAGE_KEY, serialized);
   } catch (error) {
-    console.error('Error saving state to localStorage:', error);
+    console.error('[SafeStorage] Error al persistir estado en localStorage:', error);
+
+    const isQuota = error.name === 'QuotaExceededError' || error.code === 22 || error.code === 1014;
+    if (isQuota) {
+      console.warn('[SafeStorage] Cuota excedida. Liberando colas de fallback antiguas...');
+      try {
+        localStorage.removeItem('fitpantry_fallback_queue');
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (retryError) {
+        showToast('⚠️ Almacenamiento local lleno. Libera espacio en tu navegador.', 'warning');
+      }
+    }
   }
 }
 
 function loadStateFromStorage() {
+  let stored = null;
+  let parsed = null;
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return false;
+    stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      parsed = JSON.parse(stored);
+    }
+  } catch (parseError) {
+    console.warn('[SafeStorage] Estado principal corrupto. Intentando restaurar desde respaldo seguro:', parseError);
+    try {
+      const backupStored = localStorage.getItem(STORAGE_BACKUP_KEY);
+      if (backupStored) {
+        parsed = JSON.parse(backupStored);
+        showToast('🛡️ Datos restaurados automáticamente desde copia de seguridad.', 'success');
+      }
+    } catch (backupError) {
+      console.error('[SafeStorage] Fallo al leer respaldo:', backupError);
+    }
+  }
 
-    const parsed = JSON.parse(stored);
-    state.activePlan = parsed.activePlan || 'plan3dias';
-    state.trainingLocation = parsed.trainingLocation || 'gym';
-    state.selectedWeek = parsed.selectedWeek || 1;
-    state.pantryView = parsed.pantryView || 'athome';
-    state.pantryItems = parsed.pantryItems || [];
-    state.workoutData = parsed.workoutData || [];
-    state.nutritionData = parsed.nutritionData || [];
-    state.workoutLogs = parsed.workoutLogs || {};
-    state.nutritionLogs = parsed.nutritionLogs || {};
-    state.dailyCheckin = parsed.dailyCheckin || null;
-    state.nutritionSwaps = parsed.nutritionSwaps || {};
-    state.exerciseSwaps = parsed.exerciseSwaps || {};
-    if (parsed.settings) state.settings = { ...state.settings, ...parsed.settings };
-
-    return true;
-  } catch (error) {
-    console.error('Error loading state from localStorage:', error);
+  if (!parsed || typeof parsed !== 'object') {
     return false;
   }
+
+  // Asignación defensiva con valores por defecto garantizados y chequeo de tipos
+  state.activePlan = (parsed.activePlan === 'plan3dias' || parsed.activePlan === 'plan5dias') ? parsed.activePlan : 'plan3dias';
+  state.trainingLocation = (parsed.trainingLocation === 'gym' || parsed.trainingLocation === 'casa') ? parsed.trainingLocation : 'gym';
+  state.selectedWeek = typeof parsed.selectedWeek === 'number' ? parsed.selectedWeek : 1;
+  state.pantryView = parsed.pantryView || 'athome';
+  state.pantryItems = Array.isArray(parsed.pantryItems) ? parsed.pantryItems : [];
+  state.workoutData = Array.isArray(parsed.workoutData) ? parsed.workoutData : [];
+  state.nutritionData = Array.isArray(parsed.nutritionData) ? parsed.nutritionData : [];
+  state.workoutLogs = (parsed.workoutLogs && typeof parsed.workoutLogs === 'object') ? parsed.workoutLogs : {};
+  state.nutritionLogs = (parsed.nutritionLogs && typeof parsed.nutritionLogs === 'object') ? parsed.nutritionLogs : {};
+  state.dailyCheckin = (parsed.dailyCheckin && typeof parsed.dailyCheckin === 'object') ? parsed.dailyCheckin : null;
+  state.nutritionSwaps = (parsed.nutritionSwaps && typeof parsed.nutritionSwaps === 'object') ? parsed.nutritionSwaps : {};
+  state.exerciseSwaps = (parsed.exerciseSwaps && typeof parsed.exerciseSwaps === 'object') ? parsed.exerciseSwaps : {};
+  if (parsed.settings && typeof parsed.settings === 'object') {
+    state.settings = { ...state.settings, ...parsed.settings };
+  }
+
+  return true;
 }
 
 function switchActivePlan(planKey) {
@@ -2663,16 +2750,63 @@ function renderApp() {
 }
 
 function registerPWA() {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(() => {
-          const badge = document.getElementById('offline-ready-badge');
-          if (badge) badge.classList.remove('hidden');
-        })
-        .catch(err => console.warn('SW registration warning:', err));
+  if (!('serviceWorker' in navigator)) return;
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((registration) => {
+        const badge = document.getElementById('offline-ready-badge');
+        if (badge) badge.classList.remove('hidden');
+
+        if (registration.waiting) {
+          showPwaUpdateToast(registration.waiting);
+          return;
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showPwaUpdateToast(newWorker);
+              }
+            });
+          }
+        });
+      })
+      .catch(err => console.warn('SW registration warning:', err));
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
     });
-  }
+  });
+}
+
+function showPwaUpdateToast(worker) {
+  if (document.getElementById('pwa-update-toast')) return;
+
+  const toast = document.createElement('div');
+  toast.id = 'pwa-update-toast';
+  toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-full bg-zinc-950/95 border border-emerald-500/40 backdrop-blur-xl shadow-2xl flex items-center gap-3 text-xs text-white animate-in slide-in-from-top-4';
+  toast.innerHTML = `
+    <span class="flex h-2 w-2 relative">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+      <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+    </span>
+    <span>Nueva versión disponible</span>
+    <button id="btn-pwa-apply-update" class="px-2.5 py-1 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold transition">
+      Actualizar
+    </button>
+  `;
+  document.body.appendChild(toast);
+
+  document.getElementById('btn-pwa-apply-update')?.addEventListener('click', () => {
+    worker.postMessage({ type: 'SKIP_WAITING' });
+  });
 }
 
 // ============================================================================
@@ -3226,7 +3360,10 @@ window.applyFoodSwap = function (nameEncoded, amountEncoded, macrosEncoded) {
 
   saveStateToStorage();
   renderNutrition();
-  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  if (typeof SyncService !== 'undefined') {
+    SyncService.syncUserPreferences?.(state);
+    SyncService.notifyDataChange?.();
+  }
   playTone(880, 0.12);
   showToast(`✅ Alimento sustituido: ${name}`, 'success');
   closeFoodSwapModal();
@@ -3237,7 +3374,10 @@ window.resetFoodSwap = function (mealId) {
   delete state.nutritionSwaps[mealId];
   saveStateToStorage();
   renderNutrition();
-  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  if (typeof SyncService !== 'undefined') {
+    SyncService.syncUserPreferences?.(state);
+    SyncService.notifyDataChange?.();
+  }
   showToast('Alimento restablecido al original', 'info');
 };
 
@@ -3351,7 +3491,10 @@ window.applyExerciseSwap = function (nameEncoded, equipEncoded, bioEncoded, barW
 
   saveStateToStorage();
   renderWorkout();
-  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  if (typeof SyncService !== 'undefined') {
+    SyncService.syncUserPreferences?.(state);
+    SyncService.notifyDataChange?.();
+  }
   playTone(880, 0.12);
   showToast(`⇄ Variante activa: ${altName}`, 'success');
   closeExerciseSwapModal();
@@ -3362,7 +3505,10 @@ window.resetExerciseSwap = function (exId) {
   delete state.exerciseSwaps[exId];
   saveStateToStorage();
   renderWorkout();
-  if (typeof SyncService !== 'undefined') SyncService.notifyDataChange();
+  if (typeof SyncService !== 'undefined') {
+    SyncService.syncUserPreferences?.(state);
+    SyncService.notifyDataChange?.();
+  }
   showToast('Ejercicio restablecido al original', 'info');
 };
 
@@ -3457,6 +3603,10 @@ window.setDailyCheckin = function (category, value) {
   state.dailyCheckin[category] = value;
   state.dailyCheckin.date = new Date().toISOString().split('T')[0];
   saveStateToStorage();
+  if (typeof SyncService !== 'undefined') {
+    SyncService.syncUserPreferences?.(state);
+    SyncService.notifyDataChange?.();
+  }
   renderDailyCheckinUI();
   playTone(600, 0.08);
 };
