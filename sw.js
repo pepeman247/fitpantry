@@ -3,7 +3,7 @@
  * Offline-First Caching Strategy for Gym Basements
  */
 
-const CACHE_NAME = 'fitpantry-el-green-v2.8';
+const CACHE_NAME = 'fitpantry-el-green-v2.9';
 
 const ASSETS_TO_PRECACHE = [
   './',
@@ -49,6 +49,12 @@ self.addEventListener('activate', (event) => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {

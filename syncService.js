@@ -137,6 +137,43 @@
     });
   }
 
+  async function updateQueueItemAttempts(id, attempts) {
+    const db = await openDatabase();
+    if (!db) {
+      try {
+        const queue = JSON.parse(localStorage.getItem('fitpantry_fallback_queue') || '[]');
+        const item = queue.find(q => q.id === id);
+        if (item) {
+          item.attempts = attempts;
+          localStorage.setItem('fitpantry_fallback_queue', JSON.stringify(queue));
+        }
+      } catch (e) {}
+      return;
+    }
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(QUEUE_STORE, 'readwrite');
+      const store = tx.objectStore(QUEUE_STORE);
+      const getReq = store.get(id);
+      getReq.onsuccess = () => {
+        const entry = getReq.result;
+        if (!entry) return resolve(false);
+        entry.attempts = attempts;
+        const putReq = store.put(entry);
+        putReq.onsuccess = () => resolve(true);
+        putReq.onerror = () => resolve(false);
+      };
+      getReq.onerror = () => resolve(false);
+    });
+  }
+
+  function sanitizeDocId(rawId) {
+    if (!rawId || typeof rawId !== 'string') {
+      return `doc_${Date.now()}`;
+    }
+    return rawId.replace(/[\/\s#$[\]]/g, '_').substring(0, 120);
+  }
+
   // ============================================================================
   // 2. STATUS REPORTING & LISTENERS
   // ============================================================================
@@ -223,26 +260,35 @@
           updated_at: new Date().toISOString()
         };
 
-        let docId = '';
+        let rawDocId = '';
         if (item.table === 'workout_logs') {
-          docId = item.client_log_key || `${payload.ejercicio_id}_s${payload.serie_numero}_${payload.fecha}`;
+          rawDocId = item.client_log_key || `${payload.ejercicio_id}_s${payload.serie_numero}_${payload.fecha}`;
         } else if (item.table === 'nutrition_logs') {
-          docId = item.client_log_key || `${payload.meal_id}_${payload.fecha}`;
+          rawDocId = item.client_log_key || `${payload.meal_id}_${payload.fecha}`;
         } else if (item.table === 'pantry_items') {
-          docId = item.client_log_key || payload.item_key;
+          rawDocId = item.client_log_key || payload.item_key;
+        } else if (item.table === 'user_preferences') {
+          rawDocId = 'current';
         }
+
+        const docId = sanitizeDocId(rawDocId);
 
         try {
           await db.collection('users').doc(user.uid).collection(item.table).doc(docId).set(payload, { merge: true });
           await removeQueueItem(item.id);
         } catch (error) {
           console.warn(`[SyncService] Fallo al sincronizar elemento de ${item.table} con Firestore:`, error.message);
-          if (error.message.includes('network') || error.code === 'unavailable') {
-            break; // Detener drenado si la red falló
+          const isNetworkError = error.message.includes('network') || error.code === 'unavailable' || !navigator.onLine;
+          if (isNetworkError) {
+            break; // Detener drenado si la red falló temporalmente
           }
-          if (item.attempts >= 3) {
-            console.error('[SyncService] Descartando elemento tras 3 fallos:', item);
+
+          const nextAttempts = (item.attempts || 0) + 1;
+          if (nextAttempts >= 3) {
+            console.error('[SyncService] Descartando operación corrupta tras 3 fallos consecutivos para evitar bloqueo de cola:', item);
             await removeQueueItem(item.id);
+          } else {
+            await updateQueueItemAttempts(item.id, nextAttempts);
           }
         }
       }
@@ -329,6 +375,31 @@
     }
   }
 
+  async function syncUserPreferences(prefs) {
+    if (!prefs) return;
+    const payload = {
+      dailyCheckin: prefs.dailyCheckin || null,
+      nutritionSwaps: prefs.nutritionSwaps || {},
+      exerciseSwaps: prefs.exerciseSwaps || {},
+      settings: prefs.settings || {},
+      updated_at: new Date().toISOString()
+    };
+
+    await enqueueOperation('user_preferences', 'upsert', payload, 'current');
+
+    if (navigator.onLine) {
+      drainQueue();
+    }
+  }
+
+  function notifyDataChange() {
+    if (navigator.onLine) {
+      drainQueue();
+    } else {
+      notifyStatus();
+    }
+  }
+
   // ============================================================================
   // 5. HYDRATION FROM CLOUD (PULL REMOTE USER DATA ON LOGIN)
   // ============================================================================
@@ -399,6 +470,25 @@
         });
       }
 
+      // 4. Obtener preferencias y swaps desde Firestore
+      try {
+        const prefDoc = await db.collection('users').doc(user.uid).collection('user_preferences').doc('current').get();
+        if (prefDoc.exists) {
+          const prefData = prefDoc.data();
+          if (prefData.dailyCheckin && !targetState.dailyCheckin) {
+            targetState.dailyCheckin = prefData.dailyCheckin;
+          }
+          if (prefData.nutritionSwaps && typeof prefData.nutritionSwaps === 'object') {
+            targetState.nutritionSwaps = { ...prefData.nutritionSwaps, ...targetState.nutritionSwaps };
+          }
+          if (prefData.exerciseSwaps && typeof prefData.exerciseSwaps === 'object') {
+            targetState.exerciseSwaps = { ...prefData.exerciseSwaps, ...targetState.exerciseSwaps };
+          }
+        }
+      } catch (prefErr) {
+        console.warn('[SyncService] No se pudieron hidratar preferencias remotas:', prefErr);
+      }
+
       notifyStatus();
       return true;
     } catch (e) {
@@ -435,6 +525,8 @@
     syncWorkoutSet,
     syncNutritionMeal,
     syncPantryItem,
+    syncUserPreferences,
+    notifyDataChange,
     drainQueue,
     pullFromCloud,
     getSyncStatus,
